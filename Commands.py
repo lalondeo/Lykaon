@@ -1,7 +1,7 @@
 #!usr/bin/env/python
 from threading import Thread
 import traceback, sys
-from Game import WerewolfException # :oo
+from Werewolf.Game import WerewolfException # :oo
 
 class FakeServ:
     "When testing offline. "
@@ -79,37 +79,12 @@ class CommandClass:
         def OutputMethod(self, target, text, *args):
             
             self.serv.privmsg(target, args[0].split('!')[0]+': '+str(text))
-            
-        ChanOperValues = ["voiced", "opers"]
-
-        def getuserrank(self, user, channel):
-
-            try:
-            
-                for i in range(len(self.ChanOperValues)):
-                    if user in getattr(self.channels[channel], self.ChanOperValues[i])():
-                       
-                        return i+1
-
-            except:
-                traceback.print_exc()
-                
-            
-            return 0
-
-        def execthreadedcommand(self, command, channel, author, *args):
-            result = command(*args)
-            self.OutputMethod(channel, str(result), author)
-
-        
-        
     
         def get_func(self, channel, author, *args):
 
                 try:
-                        
                         target = getattr(self.namespace, args[0].lower())
-                    
+                        
                 except AttributeError, SyntaxError:
                         a = search_object(
                             self.find_callable_attrs(),
@@ -122,20 +97,13 @@ class CommandClass:
 
                 except WerewolfException:
                     return sys.exc_info()[1].message
-
-                if target.func_name[0].lower() == "f":
-                    if hasattr(self, target.func_name[1:]):
-                        raise
-                    
-                
-
                    
                 if type(target) == type(self.get_func) or type(target) == type(lambda: 0):
                     
                          target()
 
                 else:
-                          raise Exception(4)
+                          return "OOPS"
                                                          
         def fhelp(self):
             pass
@@ -171,14 +139,14 @@ class CommandClass:
                         return self._OutputMethod(target,
                                                   message, author)
 
-        errnos = open("CommandCallingErrnos.txt").read().split('\n')
+        
 
         def find_callable_attrs(self):
             result = []
-            for i in dir(self):
-                _type = type(getattr(self, i))
-                if _type == type(self.find_callable_attrs) or _type == type(self):
-                    result.append(i)
+            for obj in dir(self.namespace):
+                _type = type(getattr(self.namespace, obj))
+                if _type == type(self.find_callable_attrs):
+                    result.append(obj)
 
             return result
         
