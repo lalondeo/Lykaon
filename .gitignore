@@ -1,2 +1,21 @@
-~*
-*.pyc
+## Python
+## Is fromhttps://github.com/werewolfirc/lykos/blob/master/.gitignore
+## Please don't hate
+
+__pycache__/
+*.py[cdo]
+
+
+## Editors
+
+# PyCharm
+.idea/
+*.iml
+
+# Vim
+.*.s[a-w][a-p]
+.s[a-w][a-p]
+
+
+## Configuration
+config.py
