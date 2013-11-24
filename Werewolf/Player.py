@@ -1,7 +1,7 @@
 # Please notice this is a license :P
 
 import random, traceback
-import Werewolf.Game as Game
+import Game as Game
 
 
 YAMLDATA = NotImplemented # :^)

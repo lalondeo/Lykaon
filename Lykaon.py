@@ -1,6 +1,7 @@
 #!usr/bin/env/python
 
 import irclib, ircbot, TimeManager
+irclib.DEBUG = 1
 from Werewolf import Game
 from threading import Thread
 import traceback, sys
@@ -18,7 +19,7 @@ class Lykaon(ircbot.SingleServerIRCBot):
                                            config.REALNAME)
 
         self.nick = config.NICK # Yes, yes :^)
-        self.GameContainer = GameContainer()
+        
         try:
           a = Thread(target = self.start)
           a.start()
@@ -39,6 +40,9 @@ class Lykaon(ircbot.SingleServerIRCBot):
     def on_welcome(self, serv, event):
         self.CommandClass = Commands.CommandClass(self.channels, serv)
         serv.TimeManager = TimeManager.TimeManager(serv) # ASDF
+        self.GameContainer = GameContainer(self.channels, serv)
+        serv.privmsg("nickserv", "identify incredible quenya")
+        
         for chan in config.CHANS:
             serv.join(chan)
 
@@ -74,8 +78,8 @@ class Lykaon(ircbot.SingleServerIRCBot):
                 namespace = self.GameContainer.container[target] # Must work
 
             text = event.arguments()[0]
-            if text[0] == config.COMMANDCHAR
-                self.CommandClass.call_func(target, user, namespace, text[1:])
+            if text[0] == config.COMMANDCHAR:
+                self.CommandClass.call_func(target, event.source(), namespace, text[1:])
 
         except Game.WerewolfException:
             serv.notice(event.source().split('!')[0], sys.exc_info()[1].message)
@@ -102,8 +106,10 @@ class Lykaon(ircbot.SingleServerIRCBot):
             klass.plylist.remove(lastnick)
             klass.plylist.append(newnick)
         
-        
-        
+
+Lykaon = Lykaon()
+while 1:
+    exec raw_input(">> ")
         
         
 

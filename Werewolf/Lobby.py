@@ -1,13 +1,15 @@
-from Werewolf.Game import WerewolfException
-from Werewolf.BaseClass import BaseChanClass
+import Game
+import BaseClass
+print dir(BaseClass)
 
-class Lobby(BaseChanClass):
+class Lobby(BaseClass.BaseChanClass):
     
 
-    def __init__(self, channels, serv, channame, startfunc, StasisDict):
-        self.plylist = []
-        self.channels, self.serv, self.channame = channels, serv, channame, startfunc
-        self.StasisDict = StasisDict
+    def __init__(self, channels, serv, channame, startfunc, StasisDict,
+                 container):
+        self.players = []
+        self.channels, self.serv, self.channame, self.startfunc = channels, serv, channame, startfunc
+        self.StasisDict, self.container = StasisDict, container
 
         if channame in StasisDict.keys():
             for accname in StasisDict[channame].keys():
@@ -21,34 +23,36 @@ class Lobby(BaseChanClass):
         # moo
 
     def get_hostmask(self, authorname):
+        print authorname
         return authorname.split('!')[1].split('@')[1]
     
-    def join(self, authorname):
+    def join(self):
+        authorname = self.author
+        name = authorname.split('!')[0]
         
         hostmask = self.get_hostmask(authorname)
         if hostmask in self.StasisDict.keys():
             return "no"
 
-        elif hostmask in self.plylist:
+        elif name in self.players:
             return "you have already joined you derpface"
 
-        for chan in self.channels:
+        for chan in list(self.channels):
             # Can't play in two chans at a time.
-            if (authorname in
-                self.channels[chan].users()+self.channels[chan].voiced()+self.channels[chan].opers()):
-                return "Nein"
+            if (name in self.container[chan]):
+                return "NEIN JEBUS"
 
-        self.plylist.append(hostmask)
+        self.players.append(name)
 
         # Voice him 
         self.serv.mode(authorname.split('!')[0], "+v")
 
     def leave(self, authorname):
         hostmask = self.get_hostmask(authorname)
-        if not hostmask in self.plylist:
+        if not hostmask in self.players:
             return "You didn't join yet you bonehead"
 
-        self.plylist.remove(hostmask)
+        self.players.remove(hostmask)
         self.serv.mode(authorname.split('!')[0], "+v")
 
     quit = leave
@@ -75,5 +79,5 @@ class Lobby(BaseChanClass):
         else:
             self.StasisDict[hostmask] += int(penalty)
 
-        if hostmask in self.plylist:
+        if hostmask in self.players:
             self.leave(self.find_hostmask(targetname)) # Rude :>

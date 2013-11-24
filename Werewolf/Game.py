@@ -1,6 +1,6 @@
-import Werewolf.Player as Player
-from Werewolf.Vote import Vote
-from Werewolf.BaseClass import BaseChanClass
+import Player as Player
+from Vote import Vote
+from BaseClass import BaseChanClass
 import random, math
 
 YAMLDATA = NotImplemented # :^)
@@ -103,6 +103,7 @@ gunner_msg_dict = {GUN_EVENT_MISS: MSG_GUNNERMISS,
 # Time
 PHASE_NIGHT = 0
 PHASE_DAY = 1
+
 
 
 specs = {

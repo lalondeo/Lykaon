@@ -1,4 +1,5 @@
-from Werewolf import Lobby, Game
+import Game
+
 class BaseChanClass:
     # Very ugly indeed, but I didn't find any better way of doing that.
     # Please note that these commands shouldn't be usable in query.
@@ -8,14 +9,13 @@ class BaseChanClass:
 
     def players(self):
         "Get the list of players. "
-        if issubclass(self, Lobby.Lobby):
-            players = self.plylist
-
-        elif issubclass(self, Game.Game):
+       
+        try:
             players = self.players
+
+        except:
             
-        else:
-            raise Game.WerewolfException("U w00t?")
+            raise Game.WerewolfException("Unknown namespace type.")
         
         return playermsg.format(str(len(players)), ", ".join(players))
 
@@ -58,7 +58,7 @@ class BaseChanClass:
         
     def rolestats(self):
         "Get the distribution of roles/specs"
-        if not issubclass(self, Game):
+        if not issubclass(self, Game.Game):
             raise Game.WerewolfException("No game is going on yet. ")
 
         roles = {}
