@@ -58,27 +58,49 @@ class Lykaon(ircbot.SingleServerIRCBot):
     def on_pubmsg(self, serv, event):
         try:
             target = event.target()
-            user = event.source()
+            user = event.source().split('!')[0]
             if target[0] != "#":
-                namespace = self.GameContainer.find_game(target)
+                chan = self.GameContainer.find_game(user)
+                if not chan:
+                    return
+                
+                namespace = self.GameContainer.container[chan]
+                if issubclass(namespace, GameContainer.Lobby):
+                    return # Nein
+
+                
 
             else:
-                namespace = self.GameContainer.container[target]
-            
-            if not game:
-                return # ASDF
+                namespace = self.GameContainer.container[target] # Must work
 
             text = event.arguments()[0]
-            if text[0] == "!":
-                self.CommandClass.call_func(user, user, namespace, text[1:])
+            if text[0] == config.COMMANDCHAR
+                self.CommandClass.call_func(target, user, namespace, text[1:])
 
         except Game.WerewolfException:
-            serv.notice(event.source(), sys.exc_info()[1].message)
+            serv.notice(event.source().split('!')[0], sys.exc_info()[1].message)
+
 
         except:
             serv.privmsg(target, "Ooops, an exception logged in console. ")
             traceback.print_exc()
 
+    def on_nick(self, serv, event):
+        lastnick = event.source().split('!')[0]
+        newnick = event.target()
+
+        if lastnick == self.NICK:
+            self.NICK = newnick
+            return
+
+        chan = self.GameContainer.find_game(user)
+        if not chan:
+            return # Nothing to change
+
+        klass = self.GameContainer.container[chan]
+        if issubclass(klass, Lobby):
+            klass.plylist.remove(lastnick)
+            klass.plylist.append(newnick)
         
         
         

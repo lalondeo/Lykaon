@@ -104,9 +104,6 @@ gunner_msg_dict = {GUN_EVENT_MISS: MSG_GUNNERMISS,
 PHASE_NIGHT = 0
 PHASE_DAY = 1
 
-# Roles
-
-
 
 specs = {
     "BULLETS": ({10:1}, lambda game, ply: random.randint(
