@@ -522,14 +522,4 @@ class Game:
         del self.PlayerList[target]
 
 
-    
-def test():
-    a = Game(["Ristovski", "Nibble", "asdf", "foo", "jacob1", "me", "Iam", "Skylark"], None, None, lambda *args: None)
-    a.PHASE = PHASE_DAY
-    a.start_lynch()
-    try:
-        for i in a.players:
-            a.PlayerList[i].lynch("Ris")
-    except:
-        pass
-    
+
