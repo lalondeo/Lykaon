@@ -1,4 +1,5 @@
-from Werewolf import Game
+from Werewolf.Game import Game
+from Werewolf.Lobby import Lobby
 
 class GameContainer:
     # Contains all the games
@@ -18,14 +19,14 @@ class GameContainer:
 
     def createlobby(self, chan):
         del self.container[chan]
-        self.container[chan] = Game.Lobby(self.channels, self.serv, chan)
+        self.container[chan] = Lobby(self.channels, self.serv, chan)
 
     def start_game(self, chan):
 
         ## TODO: add tests
         plylist = self.container[chan].plylist
-        del self.Games[chan]
-        self.container[chan] = Game.Game(plylist,
+        del self.container[chan]
+        self.container[chan] = Game(plylist,
                                          self.serv,
                                          self.createlobby,
                                          lambda *args: None,
