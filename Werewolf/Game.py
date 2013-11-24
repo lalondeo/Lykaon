@@ -1,5 +1,6 @@
 import Werewolf.Player as Player
 from Werewolf.Vote import Vote
+from Werewolf.BaseClass import BaseChanClass
 import random, math
 
 YAMLDATA = NotImplemented # :^)
@@ -14,181 +15,9 @@ StasisDict = {}
 playermsg = "{0} players: {1}"
 spectext = "Out of these players, there are {0}. "
 
-class BaseChanClass:
-    # Very ugly indeed, but I didn't find any better way of doing that.
-    # Please note that these commands shouldn't be usable in query.
 
-    landfunc = lambda x, serv, item, obj: "The {0} lands on {0}".format(
-        item, obj)
-
-    def players(self):
-        "Get the list of players. "
-        if issubclass(self, Lobby):
-            players = self.plylist
-
-        elif issubclass(self, Game):
-            players = self.players
-            
-        else:
-            raise WerewolfException("U w00t?")
-        
-        return playermsg.format(str(len(players)), ", ".join(players))
-
-    def generate_rolestats(self, roles):
-        seq = []
-
-        for role in roles.keys():
-            text = role.name_singular
-            
-            if roles[role] != 1:
-                text = role.name_plural
-
-            seq.append(str(roles[role])+' '+text)
-
-        txt = "there is "
-        if roles[roles.keys()[0]]:
-            txt = "there are "
-
-        txt = txt+", ".join(seq[:-1])
-        txt += " and "+seq[-1]
-        return txt
-                
-    def generate_specs(self, specs):
-        seq = []
-
-        for spec in specs.keys():
-            text = spec_table[spec][0]
-            
-            if roles[role] != 1:
-                text = spec_table[spec][1]
-
-            seq.append(str(specs[spec])+' '+text)
-
-
-        txt = ""
-        txt = txt+", ".join(seq[:-1])
-        txt += " and "+seq[-1]
-        return spectext.format(txt)
-        
-        
-    def rolestats(self):
-        "Get the distribution of roles/specs"
-        if not issubclass(self, Game):
-            raise WerewolfException("No game is going on yet. ")
-
-        roles = {}
-
-        for player in self.PlayerList.playerlist:
-            if not player.__class__ in roles.keys():
-                roles[player.__class__] = 0
-            
-            roles[player.__class__]+=1
-
-        specs = {}
-        for tuple in self.currentspecs:
-            if tuple[1].DEAD:
-                # No
-                continue
-
-            if not tuple[0] in specs.keys():
-                specs[tuple[0]] = 0
-        
-            specs[tuple[0]] += 1
-
-        return self.generate_rolestats(roles)+self.generate_specs(specs)
-
-
-       
-
-    def cointoss(self):
-        print self.target+" tosses a coin into the air..."
-        self.serv.TimeManager.addfunc(self.landfunc, 5, self.serv, "coin",
-                                      random.choice(["heads", "tails"]))
-
-    def ponytoss(self):
-        print self.target+" throws a pony into the air..."
-        self.serv.TimeManager.addfunc(self.landfunc, 5, self.serv, "pony",
-                                      random.choice(["hoof", "plot"]))
         
     
-
-class Lobby:
-    
-
-    def __init__(self, channels, serv, channame, startfunc):
-        self.plylist = []
-        self.channels, self.serv, self.channame = channels, serv, channame, startfunc
-        
-
-        if channame in StasisDict.keys():
-            for accname in StasisDict[channame].keys():
-                if accame in StasisDict[channame]:
-                    if StasisDict[channame][accname] > 0: # -1 means banned
-                        StasisDict[channame][accname] -= 1
-
-                    if StasisDict[channame][accname] == 0:
-                        del StasisDict[channame][accname] # 4phun
-
-        # moo
-
-    def get_hostmask(self, authorname):
-        return authorname.split('!')[1].split('@')[1]
-    
-    def join(self, authorname):
-        hostmask = self.get_hostmask(authorname)
-        if hostmask in StasisDict.keys():
-            return "no"
-
-        elif hostmask in self.plylist:
-            return "you already joined you derpface"
-
-        self.plylist.append(hostmask)
-
-        # Voice him 
-        self.serv.mode(authorname.split('!')[0], "+v")
-
-    def leave(self, authorname):
-        hostmask = self.get_hostmask(authorname)
-        if not hostmask in self.plylist:
-            return "You didn't join yet you bonehead"
-
-        self.plylist.remove(hostmask)
-        self.serv.mode(authorname.split('!')[0], "+v")
-
-    quit = leave
-
-    def find_hostmask(self, name):
-        for _list in (self.channels[self.channame].users(),
-                                self.channels[self.channame].voiced()):
-
-            for user in _list:
-                if user.split('!')[0] == name:
-                    return user
-
-        raise WerewolfException("Name not found")
-            
-
-    def fstasis(self, targetname, penalty):
-        if not penalty.isdigit() or not penalty:
-            return "you must provide a valid integer. "
-            
-        hostmask = self.get_hostmask(self.find_hostmask(targetname))
-        if not hostmask in StasisDict.keys():
-            StasisDict[hostmask] = int(penalty)
-
-        else:
-            StasisDict[hostmask] += int(penalty)
-
-        if hostmask in self.plylist:
-            self.leave(self.find_hostmask(targetname)) # Rude :>
-
-        
-        
-        
-
-    
-
-
 # events
 EVENT_GUNNERKILL = 0
 EVENT_LYNCHKILL = 1
@@ -295,7 +124,7 @@ spec_table = {"BULLETS":("gunner", "gunners"),
                 
                     
 
-class Game:
+class Game(BaseChanClass):
 
     
 
