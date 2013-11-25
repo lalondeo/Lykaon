@@ -10,12 +10,6 @@ class WerewolfException(Exception): pass
 class GameCreateError(Exception):
     pass
 
-# keys = chan names,  values = dicts (acc: stasislength)
-StasisDict = {}
-playermsg = "{0} players: {1}"
-spectext = "Out of these players, there are {0}. "
-
-
         
     
 # events
@@ -92,6 +86,9 @@ MSG_DRUNK = "You have been drinking too much! you are the village drunk. "
 # Detective
 
 MSG_DET = "The results of your investigation have returned. {0} is a... {1}!"
+MSG_DETREVEAL = "Someone accidentally drops a paper. \
+The paper reveals that {0} is a detective!" # o noez
+
 # Msg tables
 
 gunner_msg_dict = {GUN_EVENT_MISS: MSG_GUNNERMISS,
@@ -138,6 +135,7 @@ class Game(BaseChanClass):
         
         self.vote = None
         self.ENDED = False
+        self.first_night = True
         self.role_list = []
         self.PlayerList = Player.PlayerList()
         
@@ -253,6 +251,20 @@ class Game(BaseChanClass):
             num+=1
         return num
 
+    def wolf_mass_msg(self,
+                    nick = "",
+                    msg = "",
+                    function = (lambda serv: serv.privmsg)):
+        
+        # Sent to all the wolves.
+        
+        for player in self.PlayerList.playerlist:
+            if player.name == nick or not issubclass(player.__class__, Player.Wolf):
+                continue
+
+            # Yes, function may seem retaaaaaaaaarded, but it is used for action too
+            function(self.serv)(player.name, msg) # asdf
+
 
     def kill_victim(self):
         if hasattr(self.vote, "victim"):
@@ -269,6 +281,7 @@ class Game(BaseChanClass):
         self.vote = Vote(self, self.get_votingwolfcount, EVENT_WOLFKILL)
 
     def start_lynch(self):
+        self.first_night = False
         self.clear_vote()
         self.vote = Vote(self, self.get_nonwoundedcount, EVENT_LYNCHKILL)
         

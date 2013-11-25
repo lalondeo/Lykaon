@@ -39,7 +39,7 @@ class Lobby(BaseClass.BaseChanClass):
 
         for chan in list(self.channels):
             # Can't play in two chans at a time.
-            if (name in self.container[chan]):
+            if (name in self.container[chan].players):
                 return "NEIN JEBUS"
 
         self.players.append(name)
@@ -56,6 +56,9 @@ class Lobby(BaseClass.BaseChanClass):
         self.serv.mode(authorname.split('!')[0], "+v")
 
     quit = leave
+
+    def start(self):
+        self.start_func(self.channame)
 
     def find_hostmask(self, name):
         for _list in (self.channels[self.channame].users(),

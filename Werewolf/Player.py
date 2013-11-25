@@ -108,25 +108,34 @@ class Player:
     BULLETS = 0
     GUN_HIT_CHANCES = 5.0/7
     # amount of bullets will be between 2 and round(CEIL*NB_OF_PEOPLE)
-    BULLET_AMOUNT_CEIL = 0.12 
+    BULLET_AMOUNT_CEIL = 0.12
+    SPECFUNCMSG = lambda *args: None
+    ROLEMSG = ""
+    DISPLAYPLAYERS = False
         
+    def on_night__(self):
+        if self.game.first_night and self.ROLEMSG:
+            self.game.serv.privmsg(self.name, self.ROLEMSG)
 
-    def on_day(self):
-        pass
+        specmsg = self.SPECFUNCMSG(self)
+        if specmsg:
+            self.game.serv.privmsg(self.name, specmsg)
 
-    def on_night(self):
-        pass
+        if self.DISPLAYPLAYERS:
+            self.game.serv.privmsg(self.name, self.game.players())
 
-    distribution = NotImplemented
+    
+
+    distribution = NotImplemented # You have to do eet yourself :)
 
         
     GUN_MISS_CHANCES = 1.0/7
     GUN_SUICIDE_CHANCES = 2.0/7
     HEADSHOT_CHANCES = 2.0/5
     SEEN = ""
-    FAILKILLMSG = "" # Currently only used by harlot, is printed if wolf_is_dead returns False
+    FAILKILLMSG = "" # Currently only used by harlot and GA, is printed if wolf_is_dead returns False
     
-    # Might sound retarded, but harlot/werecrow keeps a reference to Player.
+    # Might sound retarded, but harlot/werecrow/GA needs to keep a reference to Player.
     # Harlot needs to find out if the visited user is dead.
     DEAD = False 
 
@@ -250,6 +259,8 @@ class Wolf(Player):
     name_singular = "wolf"
     name_plural = "wolves"
     distribution = {4:1, 10:2, 15:3, 20:4}
+    ROLEMSG = 'You are a wolf. It is your job to kill all the villagers. \
+Use "kill <nick>" to kill a villager.'
 
     def cmd_kill(self, target):
         "Used in order to kill someone"
@@ -276,6 +287,10 @@ class Werecrow(Wolf):
     name_singular = "werecrow"
     name_plural = "werecrows"
     SEEN = "wolf"
+    ROLEMSG = 'You are a werecrow. You are able to fly at night. \
+Use "kill <nick>" to kill a a villager. Alternatively, you can\
+use "observe <nick>" to check if someone is in bed or not. \
+Observing will prevent you from participating in a killing.'
 
     _kill = Wolf.cmd_kill
     killing = False
@@ -345,8 +360,12 @@ class Villager(Player):
 class Traitor(Wolf):
     distribution = {8:1}
     name_singular = "traitor"
+
     name_plural = "traitors"
     SEEN = Villager.name_singular
+    ROLEMSG = "You are a traitor. You are exactly like a\
+                               villager and not even a seer can see your true identity. \
+                               Only detectives can. "
     
     CURSED = False
     def turnintowolf(self):
@@ -376,6 +395,8 @@ class Traitor(Wolf):
 
 
 class Drunk(Villager):
+
+    ROLEMSG = "You have been drinking too much: you are the village drunk!"
 
     def init2(self):
         self.BULLET_AMOUNT_CELL = Player.BULLET_AMOUNT_CEIL*3
@@ -448,7 +469,7 @@ class OneUseCommandPlayer(Villager):
             raise Game.WerewolfException(Game.MSG_ALREADYUSEDCMD.format(self.OPERATIONNAME))
 
         self.USEDTHECOMMAND = True
-        self._cmd(target)
+        self.game.serv.privmsg(self.name, self._cmd(target))
     
         
 class Seer(OneUseCommandPlayer):
@@ -488,6 +509,7 @@ class Detective(OneUseCommandPlayer):
 
     USEDID = False
     distribution = {12:1}
+    DETREVEALODDS = 2.0/5
     name_singular = "detective"
     name_plural = "detectives"
     
@@ -501,6 +523,11 @@ class Detective(OneUseCommandPlayer):
         self.USEDID = False
 
     def _cmd(self, target):
+        # Bluaheblerg
+        if random.random() > self.DETREVEALODDS:
+            # R.I.P. :>
+            self.game.wolf.mass_msg(Game.MSG_DEATREVEAL.format(self.name)) 
+            
         return Game.MSG_DET.format(self.game.PlayerList[target].name
                                    , self.game.PlayerList[target].name_singular)
         
@@ -517,10 +544,12 @@ class Harlot(OneUseCommandPlayer):
         self.build()
 
     VISITING = ""
-    FAILKILLMSG = "The wolves' selected victim was a harlot, who was not at home last night."
+    FAILKILLMSG = "The wolves' selected victim was a harlot, \
+who was not at home last night." # BWAHAHAHAHAHAHAHAHAHAAAAAA
     def on_day(self):
         if not self.VISITING:
             return # Dumb harlot
+        
         if self.game.PlayerList.iswolf(self.VISITING):
             print "O NOEZ I VIZIT WULV"
             self.game.kill(self.name)
@@ -534,8 +563,6 @@ class Harlot(OneUseCommandPlayer):
 
     def wolf_is_dead(self):
         return not bool(self.VISITING)
-
-        
 
     def _cmd(self, target):
         self.VISITING = self.game.PlayerList[target]

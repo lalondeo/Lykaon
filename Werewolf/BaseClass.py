@@ -1,5 +1,8 @@
 import Game
 
+playermsg = "{0} players: {1}"
+spectext = "Out of these players, there are {0}. "
+
 class BaseChanClass:
     # Very ugly indeed, but I didn't find any better way of doing that.
     # Please note that these commands shouldn't be usable in query.
@@ -9,13 +12,16 @@ class BaseChanClass:
 
     def players(self):
         "Get the list of players. "
-       
-        try:
+        if issubclass(self, Game.Game):
             players = self.players
-
-        except:
             
-            raise Game.WerewolfException("Unknown namespace type.")
+        else:
+            try:
+                players = self.plylist
+
+            except:
+                
+                raise Game.WerewolfException("Unknown namespace type.")
         
         return playermsg.format(str(len(players)), ", ".join(players))
 

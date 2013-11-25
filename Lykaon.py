@@ -36,12 +36,16 @@ class Lykaon(ircbot.SingleServerIRCBot):
             traceback.print_exc()
 
 
+        
 
     def on_welcome(self, serv, event):
+        # Useful
+        self.serv = serv
+        
         self.CommandClass = Commands.CommandClass(self.channels, serv)
         serv.TimeManager = TimeManager.TimeManager(serv) # ASDF
         self.GameContainer = GameContainer(self.channels, serv)
-        serv.privmsg("nickserv", "identify incredible quenya")
+        serv.privmsg("nickserv", "identify incredible JAVEWT")
         
         for chan in config.CHANS:
             serv.join(chan)
