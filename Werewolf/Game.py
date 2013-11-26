@@ -105,7 +105,7 @@ PHASE_DAY = 1
 
 specs = {
     "BULLETS": ({10:1}, lambda game, ply: random.randint(
-        2, int(math.cell(ply.BULLET_AMOUNT_CEIL*len(game.PlayerList.playerlist))))),
+        2, int(math.ceil(ply.BULLET_AMOUNT_CEIL*len(game.PlayerList.playerlist))))),
     "CURSED": ({6:1}, lambda *args: True),
 
 }

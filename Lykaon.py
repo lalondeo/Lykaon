@@ -9,6 +9,15 @@ import Commands
 from Tools.GameContainer import GameContainer
 import Tools.config as config
 
+if sys.version_info[0] == 3:
+    import imp
+    reload = imp.reload # I know, it's retarded. *Life's a bitch and then you die*
+
+globalz = globals()
+for obj in globalz:
+    if type(obj) == type(sys):
+        reload(obj)
+
 class Lykaon(ircbot.SingleServerIRCBot):
 
     Games = {} 
@@ -45,7 +54,6 @@ class Lykaon(ircbot.SingleServerIRCBot):
         self.CommandClass = Commands.CommandClass(self.channels, serv)
         serv.TimeManager = TimeManager.TimeManager(serv) # ASDF
         self.GameContainer = GameContainer(self.channels, serv)
-        serv.privmsg("nickserv", "identify incredible JAVEWT")
         
         for chan in config.CHANS:
             serv.join(chan)
@@ -97,26 +105,54 @@ class Lykaon(ircbot.SingleServerIRCBot):
         lastnick = event.source().split('!')[0]
         newnick = event.target()
 
-        if lastnick == self.NICK:
-            self.NICK = newnick
+        if lastnick == self.nick:
+            self.nick = newnick
             return
 
-        chan = self.GameContainer.find_game(user)
+        chan = self.GameContainer.find_game(lastnick)
         if not chan:
             return # Nothing to change
 
         klass = self.GameContainer.container[chan]
-        if issubclass(klass, Lobby):
-            klass.plylist.remove(lastnick)
-            klass.plylist.append(newnick)
+        if klass.__class__.__name__ == "Lobby":
+            klass.players.remove(lastnick)
+            klass.players.append(newnick)
+
+        else:
+            klass.PlayerList[lastnick].name = newnick
         
 
-Lykaon = Lykaon()
-while 1:
-    exec raw_input(">> ")
-        
-        
+#Lykaon = Lykaon()
 
+while False:
+    try:
+        exec raw_input(">> ")
+
+    except:
+        traceback.print_exc()
+
+sample = "%s!foo@bar"
+
+def test():
+    global Lykaon
+    serv = Commands.FakeServ()
+    Lykaon.start = lambda *args, **kw: None
+    Lykaon = Lykaon()
+    Lykaon.on_welcome(serv, None)
+    event0 = irclib.Event("asdf", sample%"Lykaon", target="#asdf")
+    Lykaon.on_join(serv, event0)
+    
+    for name in ["foo", "bar", "asdf", "nigga", "fucker", "Ristovski", 
+                 "Yo mama", "blah", "bluerg", "mudafeka", "bob", "bill",
+                 "bernie"]:
         
+        event1 = irclib.Event("asdf", sample%name,
+                          "#asdf", arguments=["!join"])
+    
+
+        Lykaon.on_pubmsg(serv, event1)
+        
+    Lykaon.GameContainer.container["#asdf"].start()
+    Lykaon.GameContainer.container["#asdf"].rolestats()
 
 

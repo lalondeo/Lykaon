@@ -64,7 +64,8 @@ class BaseChanClass:
         
     def rolestats(self):
         "Get the distribution of roles/specs"
-        if not issubclass(self, Game.Game):
+        print self.__class__, Game.Game
+        if not issubclass(self.__class__, Game.Game):
             raise Game.WerewolfException("No game is going on yet. ")
 
         roles = {}

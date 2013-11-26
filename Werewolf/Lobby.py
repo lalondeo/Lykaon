@@ -58,7 +58,7 @@ class Lobby(BaseClass.BaseChanClass):
     quit = leave
 
     def start(self):
-        self.start_func(self.channame)
+        self.startfunc(self.channame)
 
     def find_hostmask(self, name):
         for _list in (self.channels[self.channame].users(),

@@ -36,7 +36,7 @@ class GameContainer:
     def start_game(self, chan):
 
         ## TODO: add tests
-        plylist = self.container[chan].plylist
+        plylist = self.container[chan].players
         del self.container[chan]
         self.container[chan] = Game(plylist,
                                          self.serv,
