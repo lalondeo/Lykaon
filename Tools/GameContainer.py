@@ -11,6 +11,9 @@ class GameContainer:
         self.channels, self.serv = channels, serv
         self.container = {}
 
+    def __getitem__(self, item):
+        return self.container[item]
+        
     def find_game(self, ply):
         # Will browse in all the games to find the one in which ply is participating :oooo
 

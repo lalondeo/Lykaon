@@ -3,6 +3,7 @@
 import irclib, ircbot, TimeManager
 irclib.DEBUG = 1
 from Werewolf import Game
+from Werewolf import BaseClass
 from threading import Thread
 import traceback, sys
 import Commands
@@ -11,12 +12,13 @@ import Tools.config as config
 
 if sys.version_info[0] == 3:
     import imp
-    reload = imp.reload # I know, it's retarded. *Life's a bitch and then you die*
+    reload = imp.reload # I know, it's retarded, live with it.
 
-globalz = globals()
-for obj in globalz:
-    if type(obj) == type(sys):
-        reload(obj)
+
+for obj in globals().keys():
+    if type(globals()[obj]) == type(sys) and globals()[obj] != sys:
+        print obj
+        reload(globals()[obj])
 
 class Lykaon(ircbot.SingleServerIRCBot):
 
@@ -68,21 +70,37 @@ class Lykaon(ircbot.SingleServerIRCBot):
 
         # TODO: Voice the player if Game
 
+    def find_game(self, user):
+        chan = self.GameContainer.find_game(user)
+        if not chan:
+            return
+        
+        namespace = self.GameContainer.container[chan]
+        if issubclass(namespace, GameContainer.Lobby):
+            return # Nein
+
+        return namespace
+                
     def on_privmsg(self, serv, event):
         self.on_pubmsg(serv, event) # A bit hacky, but meh.
+        user = event.source().split('!')[0]
+        chan = self.find_game(user)
+
+        if not chan: return
+        if chan.PlayerList.deep_istype(chan.PlayerList[user], Game.Player.Wolf):
+            chan.wolf_mass_msg(user, event.arguments()[0])
+
+        
+        
     
     def on_pubmsg(self, serv, event):
         try:
             target = event.target()
             user = event.source().split('!')[0]
             if target[0] != "#":
-                chan = self.GameContainer.find_game(user)
+                chan = self.find_game(user)
                 if not chan:
                     return
-                
-                namespace = self.GameContainer.container[chan]
-                if issubclass(namespace, GameContainer.Lobby):
-                    return # Nein
 
                 
 
@@ -124,12 +142,7 @@ class Lykaon(ircbot.SingleServerIRCBot):
 
 #Lykaon = Lykaon()
 
-while False:
-    try:
-        exec raw_input(">> ")
 
-    except:
-        traceback.print_exc()
 
 sample = "%s!foo@bar"
 
@@ -151,8 +164,21 @@ def test():
     
 
         Lykaon.on_pubmsg(serv, event1)
+
+    print Lykaon.GameContainer.container["#asdf"].playerlist()
+
+
         
     Lykaon.GameContainer.container["#asdf"].start()
-    Lykaon.GameContainer.container["#asdf"].rolestats()
+    print Lykaon.GameContainer.container["#asdf"].revealroles()
+    
 
 
+test()
+
+while 1:
+    try:
+        exec raw_input(">> ")
+
+    except:
+        traceback.print_exc()

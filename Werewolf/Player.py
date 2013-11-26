@@ -238,7 +238,7 @@ class Player:
     def wolf_is_dead(self):
             
             
-        return True # In case the victim is harlot/Guardian angel, he might not be dead after wolf kill
+        return True # In case the victim is harlot, he might not be dead after wolf kill
 
     def cmd_shoot(self, target):
         "PEW! PEW! PEW! PEW! Used to shoot an user.  "
