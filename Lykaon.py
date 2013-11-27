@@ -7,7 +7,7 @@ from Werewolf import BaseClass
 from threading import Thread
 import traceback, sys
 import Commands
-from Tools.GameContainer import GameContainer
+from Tools import GameContainer
 import Tools.config as config
 
 if sys.version_info[0] == 3:
@@ -55,7 +55,7 @@ class Lykaon(ircbot.SingleServerIRCBot):
         
         self.CommandClass = Commands.CommandClass(self.channels, serv)
         serv.TimeManager = TimeManager.TimeManager(serv) # ASDF
-        self.GameContainer = GameContainer(self.channels, serv)
+        self.GameContainer = GameContainer.GameContainer(self.channels, serv)
         
         for chan in config.CHANS:
             serv.join(chan)
@@ -75,8 +75,11 @@ class Lykaon(ircbot.SingleServerIRCBot):
         if not chan:
             return
         
-        namespace = self.GameContainer.container[chan]
-        if issubclass(namespace, GameContainer.Lobby):
+        namespace = self.GameContainer[chan]
+        if not namespace:
+            return
+        
+        if namespace.__class__ == GameContainer.Lobby:
             return # Nein
 
         return namespace
@@ -85,9 +88,10 @@ class Lykaon(ircbot.SingleServerIRCBot):
         self.on_pubmsg(serv, event) # A bit hacky, but meh.
         user = event.source().split('!')[0]
         chan = self.find_game(user)
-
         if not chan: return
+        
         if chan.PlayerList.deep_istype(chan.PlayerList[user], Game.Player.Wolf):
+            
             chan.wolf_mass_msg(user, event.arguments()[0])
 
         
@@ -97,15 +101,18 @@ class Lykaon(ircbot.SingleServerIRCBot):
         try:
             target = event.target()
             user = event.source().split('!')[0]
+            print user, target
             if target[0] != "#":
                 chan = self.find_game(user)
                 if not chan:
                     return
 
-                
+                namespace = chan.PlayerList[user]
 
             else:
-                namespace = self.GameContainer.container[target] # Must work
+                namespace = self.GameContainer[target] # Must work
+
+            print namespace
 
             text = event.arguments()[0]
             if text[0] == config.COMMANDCHAR:
@@ -164,13 +171,12 @@ def test():
     
 
         Lykaon.on_pubmsg(serv, event1)
-
-    print Lykaon.GameContainer.container["#asdf"].playerlist()
-
-
         
-    Lykaon.GameContainer.container["#asdf"].start()
-    print Lykaon.GameContainer.container["#asdf"].revealroles()
+    Lykaon.GameContainer["#asdf"].start()
+    print Lykaon.GameContainer["#asdf"].revealroles()
+
+    
+    
     
 
 
@@ -178,7 +184,18 @@ test()
 
 while 1:
     try:
-        exec raw_input(">> ")
+        data = raw_input("Enter da tingz: ").split(' ')
+        source = data[0]
+        target = data[1]
+        arg = " ".join(data[2:])
+
+        if target[0] != "#":
+            target = sample%target
+        
+        Lykaon.on_privmsg(Lykaon.serv, irclib.Event(None,
+                                             sample%source,
+                                             target,
+                                             [arg]))
 
     except:
         traceback.print_exc()

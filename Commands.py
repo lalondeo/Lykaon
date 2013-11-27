@@ -97,10 +97,11 @@ class CommandClass:
 
                 except WerewolfException:
                     return sys.exc_info()[1].message
+
                    
                 if type(target) == type(self.get_func) or type(target) == type(lambda: 0):
                     
-                         target()
+                         target(*args[1:])
 
                 else:
                           return "OOPS"

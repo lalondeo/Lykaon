@@ -2,6 +2,8 @@ import Player as Player
 from Vote import Vote
 from BaseClass import BaseChanClass
 import random, math
+import copy
+spectext = "Out of these players, there are {0}"
 
 YAMLDATA = NotImplemented # :^)
 
@@ -125,6 +127,7 @@ class Game(BaseChanClass):
 
     def __init__(self, players, serv, on_end_func, kill_func, channel):
         self.PHASE = PHASE_NIGHT
+        print "ASDFFFFF", players
         self.players, self.serv, self.on_end = players, serv, on_end_func
 
         self._kill, self.chan = kill_func, channel
@@ -164,10 +167,17 @@ class Game(BaseChanClass):
         self.start_kill()
 
     def distribute_roles(self, players):
+        print "*** DISTRIBUTION ***"
+        
         result = []
+        length = len(players)
+        players = copy.deepcopy(players)
+        
         for role in self.role_list:
-
-            for x in range(self.getcount(role.distribution, len(players))):
+            
+            for x in range(self.getcount(role.distribution, length)):
+                
+                print role, x
 
                 # Choose player, delete if from players and give him a role
                 player = random.choice(players)
@@ -186,7 +196,8 @@ class Game(BaseChanClass):
         for spec in specs.keys():
             used = []
 
-            random.shuffle(result) # Random of course
+            for i in range(len(result)*50):
+                random.shuffle(result) # Random of course
             
             for x in range(self.getcount(specs[spec][0], len(result))):
                 # Add the specs
@@ -208,7 +219,7 @@ class Game(BaseChanClass):
                     
 
                     
-                
+        print "*** DISTRIBUTION ***"
 
         return result
             
@@ -251,10 +262,81 @@ class Game(BaseChanClass):
             num+=1
         return num
 
+    def revealroles(self):
+        "asdfasdfasdf"
+        result = ""
+        for ply in self.PlayerList.playerlist:
+            result+=ply.name+': '+ply.name_singular+' '
+
+        return result
+
+    def generate_rolestats(self, roles):
+        seq = []
+
+        for role in roles.keys():
+            text = role.name_singular
+            
+            if roles[role] != 1:
+                text = role.name_plural
+
+            seq.append(str(roles[role])+' '+text)
+
+        txt = ", ".join(seq[:-1])
+        txt += " and "+seq[-1]
+        return txt
+                
+    def generate_specs(self, specs):
+        seq = []
+
+        for spec in specs.keys():
+            text = spec_table[spec][0]
+            
+            if specs[spec] != 1:
+                text = spec_table[spec][1]
+
+            seq.append(str(specs[spec])+' '+text)
+
+
+        txt = ""
+        txt = txt+", ".join(seq[:-1])
+        txt += " and "+seq[-1]
+        return spectext.format(txt)
+        
+        
+    def rolestats(self):
+        "Get the distribution of roles/specs"
+
+        if not hasattr(self, "PlayerList"):
+            raise Game.WerewolfException("No game is going on yet. ")
+
+        roles = {}
+
+        for player in self.PlayerList.playerlist:
+            if not player.__class__ in roles.keys():
+                roles[player.__class__] = 0
+            
+            roles[player.__class__]+=1
+
+        specs = {}
+        for tuple in self.current_specs:
+            if tuple[1].DEAD:
+                # No
+                continue
+
+            if not tuple[0] in specs.keys():
+                specs[tuple[0]] = 0
+        
+            specs[tuple[0]] += 1
+
+        return "There are "+self.generate_rolestats(roles)+". "+self.generate_specs(specs)+". "
+
+
+
     def wolf_mass_msg(self,
                     nick = "",
                     msg = "",
-                    function = (lambda serv: serv.privmsg)):
+                    function = (lambda serv: serv.privmsg),
+                    _format = "<{1}> {0}"):
         
         # Sent to all the wolves.
         
@@ -263,7 +345,7 @@ class Game(BaseChanClass):
                 continue
 
             # Yes, function may seem retaaaaaaaaarded, but it is used for action too
-            function(self.serv)(player.name, msg) # asdf
+            function(self.serv)(player.name, _format.format(msg, nick)) # asdf
 
 
     def kill_victim(self):

@@ -26,7 +26,7 @@ class PlayerList:
 
     def iswolf(self, player):
         "To check if the player is wolf/werecrow/any weird kind of modded wolf. Traitor/cursed doesn't count."
-        return player.__class__.cmd_kill.func_code.co_code != Player.cmd_kill.func_code.co_code
+        return player.__class__.kill.func_code.co_code != Player.kill.func_code.co_code
 
     def deep_istype(self, player, classtype):
         "Same as istype, but it will instead check if the class of player has inherited from classtype."
@@ -207,7 +207,7 @@ class Player:
         pass #Foo
         
             
-    def lynch(self, target):
+    def lynch(self, target, *args):
         "Used to lynch a user.  DUH.  "
         if self.game.PHASE == Game.PHASE_NIGHT:
             raise Game.WerewolfException(Game.MSG_PHASEERROR.format("lynch", "day"))
@@ -230,7 +230,7 @@ class Player:
         
         
 
-    def cmd_kill(*args):
+    def kill(*args):
         "You are not a wolf ..."
         raise Game.WerewolfException("You are not a wolf.") # Moo
         
@@ -240,7 +240,7 @@ class Player:
             
         return True # In case the victim is harlot, he might not be dead after wolf kill
 
-    def cmd_shoot(self, target):
+    def shoot(self, target, *args):
         "PEW! PEW! PEW! PEW! Used to shoot an user.  "
         if self.BULLETS < 1: raise Game.WerewolfException("You have no bullets!")
         target = self.game.playerlist[target]
@@ -262,7 +262,7 @@ class Wolf(Player):
     ROLEMSG = 'You are a wolf. It is your job to kill all the villagers. \
 Use "kill <nick>" to kill a villager.'
 
-    def cmd_kill(self, target):
+    def kill(self, target, *args):
         "Used in order to kill someone"
         if self.game.PHASE != Game.PHASE_NIGHT:
             raise Game.WerewolfException(Game.MSG_PHASEERROR)
@@ -270,6 +270,7 @@ Use "kill <nick>" to kill a villager.'
         elif self.game.PlayerList.deep_istype(self.game.PlayerList[target], Wolf):
             raise Game.WerewolfException(Game.MSG_KILLINGWOLFERROR)
 
+        print "okhey", self.name, target
         self.game.vote.vote(self.name, target)
             
             
@@ -292,12 +293,12 @@ Use "kill <nick>" to kill a a villager. Alternatively, you can\
 use "observe <nick>" to check if someone is in bed or not. \
 Observing will prevent you from participating in a killing.'
 
-    _kill = Wolf.cmd_kill
+    _kill = Wolf.kill
     killing = False
     distribution = {12:1}
 
 
-    def cmd_kill(self, target):
+    def kill(self, target, *args):
         "Used in order to kill someone.  You can't kill someone if already visiting. "
         if self.OBSERVING:
 
@@ -320,7 +321,7 @@ Observing will prevent you from participating in a killing.'
         "asdf"
         self.killing = False
         
-    def cmd_observe(self, target):
+    def observe(self, target, *args):
         "Used in order to observe someone.  "
         if self.OBSERVING:
             raise Game.WerewolfException(
@@ -368,6 +369,8 @@ class Traitor(Wolf):
                                Only detectives can. "
     
     CURSED = False
+    kill = Player.kill
+        
     def turnintowolf(self):
         result = Wolf(self.name, self.game)
 
@@ -390,7 +393,7 @@ class Traitor(Wolf):
         if self.game.PlayerList.deepcount(Wolf) == self.game.PlayerList.count(self.__class__):
             self.turnintowolf()
         
-    cmd_kill = Player.cmd_kill
+    
 
 
 
@@ -429,7 +432,7 @@ class OneUseCommandPlayer(Villager):
         else:
             doc = self.OPERATIONDOC
 
-        setattr(self, self.OPERATIONNAME, (lambda target: self.runcommand(target)))
+        setattr(self, self.OPERATIONNAME, (lambda target, *args: self.runcommand(target)))
         setattr(getattr(self, self.OPERATIONNAME), "__doc__", doc)
         
         

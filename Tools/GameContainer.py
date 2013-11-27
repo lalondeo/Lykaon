@@ -18,6 +18,7 @@ class GameContainer:
         # Will browse in all the games to find the one in which ply is participating :oooo
 
         for chan in self.container.keys():
+            print self.container[chan].players
             if ply in self.container[chan].players:
                 return chan
 
