@@ -17,10 +17,11 @@ class TimeManager:
     event_bank = []
 
     def addfunc(self, func, delay, *args):
-        self.event_bank.append((time.time()+delay, func, args))
+        self.event_bank.append([time.time()+delay, func]+list(args))
 
     def call(self, func, args):
         try:
+           
             func(self, *args)
 
         except:
@@ -41,6 +42,7 @@ class TimeManager:
                 else:
 
                     if obj[0] <= timestamp:
+                        
                         self.call(obj[1], obj[2:])
                         # Object expires after call.
                         # That's why self.call provides a TimeManager instance.
