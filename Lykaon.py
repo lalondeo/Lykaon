@@ -107,6 +107,8 @@ class Lykaon(ircbot.SingleServerIRCBot):
                 if not chan:
                     return
 
+                target = self.nick
+
                 namespace = chan.PlayerList[user]
 
             else:
@@ -192,10 +194,18 @@ while 1:
         if target[0] != "#":
             target = sample%target
         
-        Lykaon.on_privmsg(Lykaon.serv, irclib.Event(None,
+        Lykaon.on_pubmsg(Lykaon.serv, irclib.Event(None,
                                              sample%source,
                                              target,
                                              [arg]))
+
+    except KeyboardInterrupt:
+        while 1:
+            try:
+                exec raw_input('>> ')
+
+            except:
+                traceback.print_exc()
 
     except:
         traceback.print_exc()

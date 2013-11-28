@@ -78,8 +78,10 @@ class PlayerList:
         return possiblenameslist[0]
 
     def __delitem__(self, name):
-        print name
         name = self[name]
+        if not name.on_death():
+            raise Game.WerewolfException("Le fail") # Veri tru
+        
         name.DEAD = True
         self.playerlist.remove(name)
 
@@ -112,8 +114,12 @@ class Player:
     SPECFUNCMSG = lambda *args: None
     ROLEMSG = ""
     DISPLAYPLAYERS = False
+
+    def on_death(self):
+        pass 
         
     def on_night__(self):
+        
         if self.game.first_night and self.ROLEMSG:
             self.game.serv.privmsg(self.name, self.ROLEMSG)
 
@@ -131,6 +137,7 @@ class Player:
         
     GUN_MISS_CHANCES = 1.0/7
     GUN_SUICIDE_CHANCES = 2.0/7
+    INVINCIBLE = False
     HEADSHOT_CHANCES = 2.0/5
     SEEN = ""
     FAILKILLMSG = "" # Currently only used by harlot and GA, is printed if wolf_is_dead returns False
@@ -201,14 +208,8 @@ class Player:
 
 
         
-
-    def retract(self):
-        "Not implemented yet"
-        pass #Foo
-        
             
     def lynch(self, target, *args):
-        "Used to lynch a user.  DUH.  "
         if self.game.PHASE == Game.PHASE_NIGHT:
             raise Game.WerewolfException(Game.MSG_PHASEERROR.format("lynch", "day"))
 
@@ -224,7 +225,7 @@ class Player:
     def _shoot(self, target):
         
         # Can be replaced for wolf/drunk/anything else
-        self.interpret_event(self.gunner_event_chance)
+        self.interpret_event(target.name, self.gunner_event_chance(target))
         
         
         
@@ -242,8 +243,10 @@ class Player:
 
     def shoot(self, target, *args):
         "PEW! PEW! PEW! PEW! Used to shoot an user.  "
+        if self.game.PHASE == Game.PHASE_NIGHT:
+            raise Game.WerewolfException("You may only shoot people during day")
         if self.BULLETS < 1: raise Game.WerewolfException("You have no bullets!")
-        target = self.game.playerlist[target]
+        target = self.game.PlayerList[target]
         self.BULLETS-=1
         self._shoot(target)
 
@@ -262,8 +265,13 @@ class Wolf(Player):
     ROLEMSG = 'You are a wolf. It is your job to kill all the villagers. \
 Use "kill <nick>" to kill a villager.'
 
+    CANKILL = True
+
     def kill(self, target, *args):
         "Used in order to kill someone"
+        if not self.CANKILL:
+            raise Game.WerewolfException("You are not allowed to vote.")
+            
         if self.game.PHASE != Game.PHASE_NIGHT:
             raise Game.WerewolfException(Game.MSG_PHASEERROR)
 
@@ -278,8 +286,11 @@ Use "kill <nick>" to kill a villager.'
         event = self.gunner_event_chance()
         if self.game.PlayerList.deep_istype(self.game.PlayerList[target], self.__class__):
             event = Game.GUN_EVENT_MISS # Obviously .______.
+        
             
-        self.interpret_event(self.gunner_event_chance())    
+        self.interpret_event(self.gunner_event_chance())
+
+
 
     BULLETS = OBSERVE = None
 
@@ -293,20 +304,8 @@ Use "kill <nick>" to kill a a villager. Alternatively, you can\
 use "observe <nick>" to check if someone is in bed or not. \
 Observing will prevent you from participating in a killing.'
 
-    _kill = Wolf.kill
-    killing = False
     distribution = {12:1}
 
-
-    def kill(self, target, *args):
-        "Used in order to kill someone.  You can't kill someone if already visiting. "
-        if self.OBSERVING:
-
-            raise Game.WerewolfException(
-                Game.MSG_WERECROWOBSERVEERROR.format(target))
-
-        self.killing = True
-        self._kill(target) 
 
     def on_day(self):
         if not self.OBSERVING:
@@ -317,10 +316,7 @@ Observing will prevent you from participating in a killing.'
         print msg.format(self.OBSERVING.name)
         self.OBSERVING = None
 
-    def killretract(self):
-        "asdf"
-        self.killing = False
-        
+
     def observe(self, target, *args):
         "Used in order to observe someone.  "
         if self.OBSERVING:
@@ -335,13 +331,14 @@ Observing will prevent you from participating in a killing.'
             raise Game.WerewolfException(
                 Game.MSG_PHASEERROR.format("observe", "night"))
 
-        elif self.killing:
+        elif self.game.vote.get_vote(self):
             raise Game.WerewolfException(Game.MSG_CROWALREADYKILLING)
 
-        
+
+        self.CANKILL = False
         self.OBSERVING = self.game.PlayerList[target]
         print Game.MSG_WERECROWOBSERVE.format(target)
-        self.game.events[Game.EVENT_DAYEND].append(self.on_day) # Blarg
+   
             
         
 
@@ -370,6 +367,7 @@ class Traitor(Wolf):
     
     CURSED = False
     kill = Player.kill
+    
         
     def turnintowolf(self):
         result = Wolf(self.name, self.game)

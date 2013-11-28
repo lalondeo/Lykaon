@@ -95,8 +95,8 @@ class CommandClass:
 
                         return "Error: Attribute not found, did you mean "+a+"?"
 
-                except WerewolfException:
-                    return sys.exc_info()[1].message
+                except WerewolfException as exception:
+                    return str(exception)
 
                    
                 if type(target) == type(self.get_func) or type(target) == type(lambda: 0):
@@ -127,12 +127,12 @@ class CommandClass:
 
                 except:
                     
-                        message = sys.exc_info()[1].message
+                        message = str(sys.exc_info()[1])
                         author = author.split('!')[0]
                         if type(message) == type(1):
-                                print("TARGET: "+target, " MESSAGE: "+self.errnos[message], " AUTHOR: "+author)
+                                print("TARGET: "+target, " MESSAGE: "+str(message), " AUTHOR: "+author)
                                 self._OutputMethod(target,
-                                                   "Error: "+self.errnos[message], author)
+                                                   "Error: "+str(message), author)
                                 return
 
                         traceback.print_exc()

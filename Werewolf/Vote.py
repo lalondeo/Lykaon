@@ -9,6 +9,11 @@ class Vote:
 
     def ismajority(self, votenum):
         return (votenum >= (self.votenum_func()+0.0)/2)
+
+    def get_vote(self, player):
+        for targ in self.votes:
+            if player in self.votes[targ]:
+                return targ
             
     def vote(self, source, target):
         source, target = self.game.PlayerList[source], self.game.PlayerList[target]

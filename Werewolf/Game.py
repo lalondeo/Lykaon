@@ -1,7 +1,7 @@
 import Player as Player
 from Vote import Vote
 from BaseClass import BaseChanClass
-import random, math
+import random, math, time
 import copy
 spectext = "Out of these players, there are {0}"
 
@@ -144,6 +144,7 @@ class Game(BaseChanClass):
         
         self.events[EVENT_LYNCHKILL].append(self.event_lynch)
         self.events[EVENT_WOLFKILL].append(self.event_kill)
+        self.PHASESTART = time.time()
         
 
 
@@ -164,6 +165,7 @@ class Game(BaseChanClass):
             
     
         self.distribute_roles(players)
+        self.mass_call("on_night")
         self.start_kill()
 
     def distribute_roles(self, players):
@@ -243,7 +245,8 @@ class Game(BaseChanClass):
     
         
     def get_nonwoundedcount(self):
-        "Pretty obvious ..."
+        # Since shot people don't count as voting people,
+        # 10 people with two shot -> 8 -> 5 = majority
         num = 0
         for player in self.PlayerList.playerlist:
             if player.VOTE: num+=1
@@ -251,6 +254,7 @@ class Game(BaseChanClass):
         return num
 
     def get_votingwolfcount(self):
+        # Excluding wurcrawez
         num = 0
         for player in self.PlayerList.playerlist:
             if not self.PlayerList.iswolf(player):
@@ -330,6 +334,10 @@ class Game(BaseChanClass):
 
         return "There are "+self.generate_rolestats(roles)+". "+self.generate_specs(specs)+". "
 
+    def lynch(self, target, *args):
+        "Lynch lynch lynch lynch :O"
+        return self.PlayerList[self.authorname.split('!')[0]].lynch(target)
+
 
 
     def wolf_mass_msg(self,
@@ -356,15 +364,36 @@ class Game(BaseChanClass):
         if hasattr(self, "vote"):
             if self.vote:
                 del self.vote
+
+
+    def phase_test(self, func):
+        if (time.time() - self.PHASESTART) < 10:
+            self.serv.TimeManager.addfunc(func, self.PHASESTART+10)
+            return False # NEIN
+
+        return True
+
+    def set_phasestart(self):
+        self.PHASESTART = time.time()
         
         
     def start_kill(self):
+        # Roughly means "day -> night"
+        if not self.phase_test(self.start_kill):
+            pass
+        
         self.clear_vote()
+        self.set_phasestart()
         self.vote = Vote(self, self.get_votingwolfcount, EVENT_WOLFKILL)
 
     def start_lynch(self):
+        # Roughly means "night -> day"
+        if not self.phase_test(self.start_kill):
+            pass
+        
         self.first_night = False
         self.clear_vote()
+        self.set_phasestart()
         self.vote = Vote(self, self.get_nonwoundedcount, EVENT_LYNCHKILL)
         
 
@@ -415,11 +444,13 @@ class Game(BaseChanClass):
             
             func(*args)
 
+    
+
 
 
     def isgameover(self):
         x = self.PlayerList.deepcount(Player.Wolf)
-        print "Game stats: Wolves:", x, "Villies: ", len(self.PlayerList.playerlist)
+        print "Game stats: Wolves:", x, "Villies: ", len(self.PlayerList.playerlist)-x
         if x == 0:
             print "All the wolves are dead :OOO"
             self.ENDED = True
@@ -439,9 +470,9 @@ class Game(BaseChanClass):
     
    
     def kill(self, target):
-        print target+" was killed. "
-        self._kill(target)
         del self.PlayerList[target]
+        self._kill(target)
+        
 
 
 
