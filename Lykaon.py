@@ -1,7 +1,7 @@
 #!usr/bin/env/python
 
 import irclib, ircbot, TimeManager
-irclib.DEBUG = 1
+irclib.DEBUG = 2
 from Werewolf import Game
 from Werewolf import BaseClass
 from threading import Thread
@@ -30,7 +30,6 @@ class Lykaon(ircbot.SingleServerIRCBot):
                                            config.REALNAME)
 
         self.nick = config.NICK # Yes, yes :^)
-        
         try:
           a = Thread(target = self.start)
           a.start()
@@ -52,6 +51,8 @@ class Lykaon(ircbot.SingleServerIRCBot):
     def on_welcome(self, serv, event):
         # Useful
         self.serv = serv
+
+        serv.alleventshandler = self.alleventshandler # I added that
         
         self.CommandClass = Commands.CommandClass(self.channels, serv)
         serv.TimeManager = TimeManager.TimeManager(serv) # ASDF
@@ -86,23 +87,62 @@ class Lykaon(ircbot.SingleServerIRCBot):
                 
     def on_privmsg(self, serv, event):
         self.on_pubmsg(serv, event) # A bit hacky, but meh.
-        user = event.source().split('!')[0]
-        chan = self.find_game(user)
-        if not chan: return
-        
-        if chan.PlayerList.deep_istype(chan.PlayerList[user], Game.Player.Wolf):
-            
-            chan.wolf_mass_msg(user, event.arguments()[0])
 
+    def alleventshandler(self, event):
+        # Sees if a player has an handler for datt
+        ply = event.source().split('!')[0]
+
+        game = self.find_game(ply)
+        if not game: return
         
+        plyclass = game.PlayerList[ply]
+        for obj in dir(plyclass):
+            if obj.startswith("on_"+event.eventtype()):
+                if type(getattr(plyclass, obj)) != type(self.alleventshandler):
+                    continue # Who knows ._____.
+                try:
+                    getattr(plyclass, obj)(event)
+
+                except GameContainer.Game.WerewolfException:
+                    print "HAHAHAHAHAHHAHAHAHJAAHAHahaHHIOfrhrg9ergoaerwrv"
+                    
+                
+        
+    def exception_handler(self, serv, event):
+        # Very weird class.
+        # Re-raises the exception to catch it in the proper way
+        # Probably terribly retarded, live with it.
+
+        result = ""
+        user = event.source().split('!')[0]
+
+        try:
+            raise sys.exc_info()[1]
+        
+        except Game.WerewolfException:
+            result = str(sys.exc_info()[1])
+            
+
+        except:
+            result = "Oops! Exception logged in console.  Please report this. "
+            traceback.print_exc() 
+
+        if event.eventtype() == "pubmsg":
+            serv.privmsg(event.target(), user+': '+result)
+
+        else:
+            serv.notice(user, result)
         
     
     def on_pubmsg(self, serv, event):
         try:
+
+            raise Game.Player.Game.WerewolfException()
             target = event.target()
             user = event.source().split('!')[0]
             print user, target
             if target[0] != "#":
+                # Le query
                 chan = self.find_game(user)
                 if not chan:
                     return
@@ -112,21 +152,17 @@ class Lykaon(ircbot.SingleServerIRCBot):
                 namespace = chan.PlayerList[user]
 
             else:
+                # Le channel
                 namespace = self.GameContainer[target] # Must work
-
-            print namespace
-
+                
             text = event.arguments()[0]
             if text[0] == config.COMMANDCHAR:
                 self.CommandClass.call_func(target, event.source(), namespace, text[1:])
 
-        except Game.WerewolfException:
-            serv.notice(event.source().split('!')[0], sys.exc_info()[1].message)
 
 
         except:
-            serv.privmsg(target, "Ooops, an exception logged in console. ")
-            traceback.print_exc()
+            self.exception_handler()
 
     def on_nick(self, serv, event):
         lastnick = event.source().split('!')[0]
@@ -183,6 +219,7 @@ def test():
 
 
 test()
+
 
 while 1:
     try:

@@ -417,6 +417,7 @@ class ServerConnection(Connection):
 
         self.previous_buffer = ""
         self.handlers = {}
+        self.alleventshandler = lambda ev: None
         self.real_server_name = ""
         self.real_nickname = nickname
         self.server = server
@@ -597,6 +598,8 @@ class ServerConnection(Connection):
                     pass
                 self._handle_event(Event(command, prefix, target, arguments))
 
+    
+
     def _handle_event(self, event):
         """[Internal]"""
         test = True
@@ -614,6 +617,8 @@ class ServerConnection(Connection):
                 if i in self.ignore_map.keys():
                     if event.eventtype() in self.ignore_map[i] or event.eventtype() == "all":
                         return
+
+        self.alleventshandler(event) # Foobar
         
         self.irclibobj._handle_event(self, event)
         if event.eventtype() in self.handlers:

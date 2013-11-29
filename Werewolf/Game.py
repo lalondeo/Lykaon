@@ -61,6 +61,8 @@ MSG_ALREADYUSEDCMD = "You may only {0} once per round. "
 
 MSG_LYNCHWOUNDED = "You are wounded and resting, thus you are unable to vote for the day."
 
+MSG_SELECTED = "{0} has selected {1} to be {2}!" # 1) author 2) target 3) action
+
 #WereCrow
 MSG_WERECROWOBSERVEERROR = "You are already observing {0}. "
 MSG_WERECROWWASINBED = "As the sun rises, you conclude that {0} was sleeping \
@@ -126,11 +128,14 @@ class Game(BaseChanClass):
     
 
     def __init__(self, players, serv, on_end_func, kill_func, channel):
+        serv.action(channel, "sets mode +b on "+channel)
+        
         self.PHASE = PHASE_NIGHT
-        print "ASDFFFFF", players
+       
         self.players, self.serv, self.on_end = players, serv, on_end_func
 
         self._kill, self.chan = kill_func, channel
+        self.channame = channel
         self.events = {
             EVENT_GUNNERKILL:[],
             EVENT_LYNCHKILL:[],
@@ -338,6 +343,9 @@ class Game(BaseChanClass):
         "Lynch lynch lynch lynch :O"
         return self.PlayerList[self.authorname.split('!')[0]].lynch(target)
 
+    def shoot(self, target, *args):
+        return self.PlayerList[self.authorname.split('!')[0]].shoot(target)
+
 
 
     def wolf_mass_msg(self,
@@ -443,9 +451,9 @@ class Game(BaseChanClass):
         for func in self.events[event]:
             
             func(*args)
-
     
-
+    
+    
 
 
     def isgameover(self):

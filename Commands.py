@@ -115,6 +115,7 @@ class CommandClass:
                         self.namespace = namespace
                         self.target, self.namespace.target = target, target
                         self.author, self.namespace.author = author, author
+                        self.namespace.authorname = authorname
                         
                         cmdtext = cmdtext.split(' ')
 

@@ -80,7 +80,7 @@ class PlayerList:
     def __delitem__(self, name):
         name = self[name]
         if not name.on_death():
-            raise Game.WerewolfException("Le fail") # Veri tru
+            raise Game.WerewolfException("Le fail") 
         
         name.DEAD = True
         self.playerlist.remove(name)
@@ -111,9 +111,15 @@ class Player:
     GUN_HIT_CHANCES = 5.0/7
     # amount of bullets will be between 2 and round(CEIL*NB_OF_PEOPLE)
     BULLET_AMOUNT_CEIL = 0.12
-    SPECFUNCMSG = lambda *args: None
+    SPECNAME = ""
+    GETSPECMSG = lambda *args: None
     ROLEMSG = ""
     DISPLAYPLAYERS = False
+    def chanmsg(self, msg):
+        self.game.serv.privmsg(self.game.channame, msg)
+
+    def usermsg(self, msg):
+        self.game.serv.privmsg(self.name, msg)
 
     def on_death(self):
         pass 
@@ -121,14 +127,15 @@ class Player:
     def on_night__(self):
         
         if self.game.first_night and self.ROLEMSG:
-            self.game.serv.privmsg(self.name, self.ROLEMSG)
+            self.usermsg(self.ROLEMSG)
 
-        specmsg = self.SPECFUNCMSG(self)
+        specmsg = self.GETSPECMSG(self)
+        
         if specmsg:
-            self.game.serv.privmsg(self.name, specmsg)
+            self.usermsg(specmsg)
 
         if self.DISPLAYPLAYERS:
-            self.game.serv.privmsg(self.name, self.game.players())
+            self.usermsg(self.game.playerlist())
 
     
 
@@ -167,7 +174,7 @@ class Player:
         while returnevent == -1:
             x = eventdict.keys()
             random.shuffle(x)
-            print x
+            
 
             for i in x:
                 seed = random.random()
@@ -190,8 +197,7 @@ class Player:
 
     def interpret_event(self, target, event):
         info = (self.name, target, self.name_singular)
-        print Game.MSG_GUNNERHIT.format(*info)
-        print Game.gunner_msg_dict[event].format(*info)
+
 
         if event == Game.GUN_EVENT_HIT:
             if self.game.PlayerList.iswolf(self.game.PlayerList[target]):
@@ -214,7 +220,7 @@ class Player:
             raise Game.WerewolfException(Game.MSG_PHASEERROR.format("lynch", "day"))
 
         elif self.VOTE == None:
-            print Game.MSG_LYNCHWOUNDED.format(self.name)
+            self.game.serv.privmsg(self.game.channame, Game.MSG_LYNCHWOUNDED.format(self.name))
             return
 
         self.game.vote.vote(self.name, target)
@@ -267,6 +273,27 @@ Use "kill <nick>" to kill a villager.'
 
     CANKILL = True
 
+    def on_privmsg(self, event):
+        self.game.wolf_mass_msg(self.name, event.arguments()[0])
+
+    def on_nightdisplaywolfroles(self):
+        seq = []
+        for player in self.game.PlayerList.playerlist:
+            if player.name == self.name:
+                # Uh oh
+                continue
+
+            elif issubclass(player.__class__, Wolf):
+                seq.append(player.name+' ('+player.name_singular+')')
+
+            else:
+                seq.append(player.name)
+
+        self.usermsg(", ".join(seq))
+
+    
+        
+
     def kill(self, target, *args):
         "Used in order to kill someone"
         if not self.CANKILL:
@@ -278,8 +305,8 @@ Use "kill <nick>" to kill a villager.'
         elif self.game.PlayerList.deep_istype(self.game.PlayerList[target], Wolf):
             raise Game.WerewolfException(Game.MSG_KILLINGWOLFERROR)
 
-        print "okhey", self.name, target
         self.game.vote.vote(self.name, target)
+        
             
             
     def _shoot(self, target):
@@ -313,7 +340,7 @@ Observing will prevent you from participating in a killing.'
         
         msg = Game.MSG_WERECROWWASINBED if self.OBSERVING.OBSERVE else Game.MSG_WERECROWWASNTINBED
 
-        print msg.format(self.OBSERVING.name)
+        self.usermsg(msg.format(self.OBSERVING.name))
         self.OBSERVING = None
 
 
@@ -337,7 +364,7 @@ Observing will prevent you from participating in a killing.'
 
         self.CANKILL = False
         self.OBSERVING = self.game.PlayerList[target]
-        print Game.MSG_WERECROWOBSERVE.format(target)
+        self.usermsg(Game.MSG_WERECROWOBSERVE.format(target))
    
             
         
@@ -403,7 +430,7 @@ class Drunk(Villager):
         self.BULLET_AMOUNT_CELL = Player.BULLET_AMOUNT_CEIL*3
     
     def on_night(self):
-        print self.name+": "+Game.MSG_DRUNK
+        self.usermsg(self.name+": "+Game.MSG_DRUNK)
 
     distribution = {8:1}
         
@@ -419,7 +446,8 @@ class OneUseCommandPlayer(Villager):
     # Fancy name
     # Like seer, det, GA
     # Werecrow doesn't use it because it requires Wolf and is slightly different
-
+    DISPLAYPLAYERS = True
+    
     def build(self):
         if not self.OPERATIONNAME:
             raise Game.GameCreateError("You have to define the OPERATIONNAME attribute. ")
@@ -436,7 +464,7 @@ class OneUseCommandPlayer(Villager):
         
     
     USEDTHECOMMAND = False
-    distribution = NotImplemented # 
+    distribution = NotImplemented # asfd
     PHASE = 0
     OPERATIONNAME = ""
     OPERATIONDOC = None
@@ -485,7 +513,7 @@ class Seer(OneUseCommandPlayer):
     name_singular = "seer"
     name_plural = "seers"
     OBSERVE = False
-
+    
     
 
  
@@ -502,7 +530,7 @@ class Seer(OneUseCommandPlayer):
         else:
             kind = player.name_singular
 
-        print Game.MSG_SEER.format(player.name, kind)
+        self.usermsg(Game.MSG_SEER.format(player.name, kind))
         
 
         
@@ -529,8 +557,8 @@ class Detective(OneUseCommandPlayer):
             # R.I.P. :>
             self.game.wolf.mass_msg(Game.MSG_DEATREVEAL.format(self.name)) 
             
-        return Game.MSG_DET.format(self.game.PlayerList[target].name
-                                   , self.game.PlayerList[target].name_singular)
+        self.usermsg(Game.MSG_DET.format(self.game.PlayerList[target].name
+                                   , self.game.PlayerList[target].name_singular))
         
         
 
@@ -552,16 +580,16 @@ who was not at home last night." # BWAHAHAHAHAHAHAHAHAHAAAAAA
             return # Dumb harlot
         
         if self.game.PlayerList.iswolf(self.VISITING):
-            print "O NOEZ I VIZIT WULV"
+            self.game.serv.privmsg(self.game.channame, "O NOEZ I VIZIT WULV")
             self.game.kill(self.name)
 
         elif self.VISITING.DEAD == True:
-            print "O NAWZ I VIZIT VIKTUM"
+            self.game.serv.privmsg(self.game.channame, "O NOEZ I VIZIT VIKTEM")
             self.game.kill(self.name)
 
         self.OBSERVE = True
         self.VISITING = ""
-
+        
     def wolf_is_dead(self):
         return not bool(self.VISITING)
 

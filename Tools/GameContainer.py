@@ -10,6 +10,7 @@ class GameContainer:
     def __init__(self, channels, serv):
         self.channels, self.serv = channels, serv
         self.container = {}
+        self.modebank = {}
 
     def __getitem__(self, item):
         return self.container[item]
@@ -37,15 +38,29 @@ class GameContainer:
                                      self.stasisdicts[chan],
                                      self.container)
 
+    def kill(self, chan, target):
+        self.serv.mode(chan, "-v+q "+target+' '+target)
+
+    def stopgame(self, chan):
+        for ply in self.modebank[chan]:
+            self.serv.mode(chan, "-q "+target)
+
+        self.serv.mode(chan, "-m")
+
     def start_game(self, chan):
 
         ## TODO: add tests
+        
         plylist = self.container[chan].players
+        
         del self.container[chan]
         self.container[chan] = Game(plylist,
-                                         self.serv,
-                                         self.createlobby,
-                                         lambda *args: None,
-                                         chan)
+                                    self.serv,
+                                    self.createlobby,
+                                    lambda target: self.kill(chan, target),
+                                    chan)
+
+        
+        self.serv.mode(chan, "+m")
 
     #def    
