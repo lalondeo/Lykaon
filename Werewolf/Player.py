@@ -1,10 +1,8 @@
-# Please notice this is a license :P
+# Please notice that this is a license :P
 
-import random, traceback
+import random, traceback, time, json
 import Game as Game
-
-
-YAMLDATA = NotImplemented # :^)
+msgs = json.loads(open("Config/msgs.txt").read())
 
 class PlayerList:
 
@@ -99,8 +97,37 @@ class Player:
 
     def __init__(self, name, game):
         self.name, self.game = name, game
+        self.LASTMSG = time.time() # asdf
         if hasattr(self, "init2"):
             self.init2()
+
+    # Reperz
+
+    def event_test(self, event):
+        if self.game.channame != event.target():
+            return False
+        
+    def on_pubmsgreaper(self, event):
+        if not self.event_test(event): return
+        
+        self.GAVEWARNING = False
+        self.LASTMSG = time.time()
+
+    def on_actionreaper(self, event):
+        self.on_pubmsgreaper(event)
+
+    def on_joinreaper(self, event):
+        if not self.event_test(event): return
+
+        self.PARTTIME = self.QUITTIME = None
+        self.on_pubmsgreaper(event)
+
+    def on_partreaper(self, event):
+        if not self.event_test(event): return
+        self.PARTTIME = time.time()
+
+    def on_quitreaper(self, event):
+        self.QUITTIME = time.time()
 
        
 
@@ -113,14 +140,29 @@ class Player:
     BULLET_AMOUNT_CEIL = 0.12
     SPECNAME = ""
     GETSPECMSG = lambda *args: None
+
+    # For reaper.
+    # these values (except for GAVEWARNING, which is bool) are timestamps.
+    LASTMSG = 0
+    PARTTIME = None
+    QUITTIME = None
+    GAVEWARNING = False
+
+    # Data related to first night.  ROLEMSG will be PMd to the player.
+    # If DISPLAYPLAYERS = True, a player list will be automatically sent too.
     ROLEMSG = ""
     DISPLAYPLAYERS = False
+
+    # Helpers
     def chanmsg(self, msg):
+        
         self.game.serv.privmsg(self.game.channame, msg)
 
     def usermsg(self, msg):
+        
         self.game.serv.privmsg(self.name, msg)
 
+    # What to do if ply dies.
     def on_death(self):
         pass 
         
@@ -139,13 +181,16 @@ class Player:
 
     
 
-    distribution = NotImplemented # You have to do eet yourself :)
+    # distribution: dict. refer yourself to Game.Game.distribute_roles
+    distribution = NotImplemented 
 
-        
+
+    # Gun things
     GUN_MISS_CHANCES = 1.0/7
     GUN_SUICIDE_CHANCES = 2.0/7
-    INVINCIBLE = False
     HEADSHOT_CHANCES = 2.0/5
+
+
     SEEN = ""
     FAILKILLMSG = "" # Currently only used by harlot and GA, is printed if wolf_is_dead returns False
     
@@ -250,7 +295,8 @@ class Player:
     def shoot(self, target, *args):
         "PEW! PEW! PEW! PEW! Used to shoot an user.  "
         if self.game.PHASE == Game.PHASE_NIGHT:
-            raise Game.WerewolfException("You may only shoot people during day")
+            raise Game.WerewolfException(msgs["PHASEERROR"].format("shoot",
+                                                                   "day"))
         if self.BULLETS < 1: raise Game.WerewolfException("You have no bullets!")
         target = self.game.PlayerList[target]
         self.BULLETS-=1
@@ -268,8 +314,7 @@ class Wolf(Player):
     name_singular = "wolf"
     name_plural = "wolves"
     distribution = {4:1, 10:2, 15:3, 20:4}
-    ROLEMSG = 'You are a wolf. It is your job to kill all the villagers. \
-Use "kill <nick>" to kill a villager.'
+    ROLEMSG = msgs["WOLFROLEMSG"]
 
     CANKILL = True
 
@@ -326,10 +371,7 @@ class Werecrow(Wolf):
     name_singular = "werecrow"
     name_plural = "werecrows"
     SEEN = "wolf"
-    ROLEMSG = 'You are a werecrow. You are able to fly at night. \
-Use "kill <nick>" to kill a a villager. Alternatively, you can\
-use "observe <nick>" to check if someone is in bed or not. \
-Observing will prevent you from participating in a killing.'
+    ROLEMSG = msgs["CROWROLEMSG"]
 
     distribution = {12:1}
 

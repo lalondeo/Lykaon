@@ -4,7 +4,7 @@ from Werewolf.Lobby import Lobby
 
 
 class GameContainer:
-    # Contains all the games
+    # Contains all the games objects (Lobby/Game)
     stasisdicts = {}
 
     def __init__(self, channels, serv):

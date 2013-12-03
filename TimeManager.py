@@ -8,8 +8,8 @@ class TimeManager:
     # Everything related to time
     # (e.g. Idling players slaying, coin tossing, game phase switch, etc.)
     # is computed here.
-    def __init__(self, serv):
-        self.serv = serv
+    def __init__(self, serv, GameContainer):
+        self.serv, self.GameContainer = serv, GameContainer
         Thread(target=self.infiniteloop).start() # Start eet
 
     # Format: (timestamp, function, args)
@@ -17,7 +17,9 @@ class TimeManager:
     event_bank = []
 
     def addfunc(self, func, delay, *args):
-        self.event_bank.append([time.time()+delay, func]+list(args))
+        event = [time.time()+delay, func]+list(args)
+        self.event_bank.append(event)
+        return event
 
     def call(self, func, args):
         try:

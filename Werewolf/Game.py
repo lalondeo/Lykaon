@@ -2,8 +2,11 @@ import Player as Player
 from Vote import Vote
 from BaseClass import BaseChanClass
 import random, math, time
-import copy
+import copy, json
+
 spectext = "Out of these players, there are {0}"
+
+msgs = json.loads(open("Config/msgs.txt").read())
 
 YAMLDATA = NotImplemented # :^)
 
@@ -31,7 +34,7 @@ RATE_LIMIT = 60 # Time between each rate-limited commands
 
 # Shortened. Idlers suck.
 IDLE_WARNING = 120
-IDLE_TIMEOUT = 180
+IDLE_TIMEOUT = IDLE_WARNING + 180
 PART_WAIT_TIME = 10
 QUIT_WAIT_TIME = 30
 
@@ -128,9 +131,11 @@ class Game(BaseChanClass):
     
 
     def __init__(self, players, serv, on_end_func, kill_func, channel):
-        serv.action(channel, "sets mode +b on "+channel)
+        serv.action(channel, "sets mode +m on "+channel)
         
         self.PHASE = PHASE_NIGHT
+
+        
        
         self.players, self.serv, self.on_end = players, serv, on_end_func
 
@@ -229,6 +234,31 @@ class Game(BaseChanClass):
         print "*** DISTRIBUTION ***"
 
         return result
+
+    def reaper(self):
+        # Will reap the idlers from the game. 8)
+
+        tests = {
+            (lambda tmstp, ply: tmstp-ply.LASTMSG > IDLE_WARNING and not ply.GAVEWARNING): (msgs["IDLEWARN"], False),
+            (lambda tmstp, ply: tmstp-ply.LASTMSG > IDLE_TIMEOUT): (msgs["IDLEKILL"], True),
+            (lambda tmstp, ply: tmstp-ply.PARTTIME > PART_WAIT_TIME): (msgs["PARTKILL"], True),
+            (lambda tmstp, ply: tmstp-ply.QUITTIME > QUIT_WAIT_TIME): (msgs["QUITTIME"], True)}
+
+        time.sleep()
+        for player in self.PlayerList.playerlist:
+            timestamp = time.time()
+            # Execute all the tests.
+            for test in tests.keys():
+                if test(timestamp, player):
+                    serv.privmsg(self.chan, tests[test][0].format(player.name))
+                    if tests[test][1]:
+                        # Not a warning, we have to murder *evil face*
+                        self.kill(player.name)
+
+                
+
+                 
+            
             
 
     def getcount(self, distribution, plycount):
