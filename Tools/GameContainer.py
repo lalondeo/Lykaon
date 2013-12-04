@@ -1,6 +1,10 @@
 from Werewolf.Game import Game
 from Werewolf.Lobby import Lobby
 
+import json # :Oooo
+
+
+userdict = json.loads(open("Config/UserDict.py").read())
 
 
 class GameContainer:
@@ -12,8 +16,13 @@ class GameContainer:
         self.container = {}
         self.modebank = {}
 
+    def __iter__(self):
+        return iter(self.container.values())
+        
     def __getitem__(self, item):
         return self.container[item]
+
+    
         
     def find_game(self, ply):
         # Will browse in all the games to find the one in which ply is participating :oooo

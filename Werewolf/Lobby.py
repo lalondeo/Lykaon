@@ -1,5 +1,7 @@
 import Game
-import BaseClass, time
+import BaseClass, time, json
+
+msgs = json.loads(open("Config/msgs.txt").read())
 
 MINJOINTIME = 60
 WAITTIMEADD = 20
@@ -31,16 +33,41 @@ class Lobby(BaseClass.BaseChanClass):
 
         # moo
 
+    # Handlers
+
+    def on_part(self, event):
+        self.author = event.source()
+        self.leave(errmsg=False, msg=msgs["LOBBYLEAVEMSG"])
+
+    def on_quit(self, event):
+        self.author = event.source()
+        self.leave(errmsg=False, msg=msgs["QUITMSG"])
+
+    def on_kick(self, event):
+        self.author = event.source()
+        self.leave(errmsg = False, msg = msgs["KICKMSG"])
+
+
+    # Helpers
+
+    def get_nickname(self, authorname):
+        return authorname.split('!')[0]
+    
     def get_hostmask(self, authorname):
-        print authorname
         return authorname.split('!')[1].split('@')[1]
+
+    def display_plycount(self):
+        self.serv.privmsg(self.channame, msgs["LOBBYPLYCOUNT"].format(str(len(self.players))))
+
+    # Actual commands
     
     def join(self):
+        "Join the game. "
         if len(self.players) == 0:
             self.starttime = time.time()
             
         authorname = self.author
-        name = authorname.split('!')[0]
+        name = self.get_nickname(authorname)
         
         hostmask = self.get_hostmask(authorname)
         if hostmask in self.StasisDict.keys():
@@ -56,25 +83,43 @@ class Lobby(BaseClass.BaseChanClass):
 
         self.players.append(name)
         self.hostmasks.append(hostmask)
+        self.serv.privmsg(self.channame, msgs["JOINMSG"].format(name))
+        self.display_plycount()
 
         # Voice him 
         self.serv.mode(self.channame, "+v "+name)
 
-    def leave(self):
-        hostmask = self.get_hostmask(self.author)
-        name = self.author.split('!')[0]
-        if not name in self.players:
-            raise Game.WerewolfException("You didn't join yet")
 
-        index = self.players.index(name)
-        del self.players[index]
-        del self.hostmasks[index]
-              
-        self.serv.mode(self.channame, "-v "+name)
 
-        if len(self.players) == 0:
-            self.starttime = 0
-            self.waitcount = 0
+    def leave(self, errmsg=True, msg = msgs["LOBBYLEAVEMSG"]):
+        "leave teh game. "
+        try:
+            if type(errmsg) != type(False):
+                return # NO .____________.
+            
+            
+            hostmask = self.get_hostmask(self.author)
+            name = self.get_nickname(self.author)
+                                                                
+            if not name in self.players:
+                raise Game.WerewolfException("You didn't join yet")
+
+            index = self.players.index(name)
+            del self.players[index]
+            del self.hostmasks[index]
+
+            self.serv.privmsg(self.channame, msg.format(name, "player"))
+            self.display_plycount()
+            self.serv.mode(self.channame, "-v "+name)
+
+             # Reset the stats because we have to.
+            if len(self.players) == 0:
+                self.starttime = None
+                self.waitcount = 0
+
+        except:
+            if errmsg:
+                raise
             
 
     quit = leave

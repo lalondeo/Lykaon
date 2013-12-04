@@ -88,23 +88,33 @@ class Lykaon(ircbot.SingleServerIRCBot):
     def on_privmsg(self, serv, event):
         self.on_pubmsg(serv, event) # A bit hacky, but meh.
 
+    def call_handler(self, instance, event):
+        # Used in alleventshandler
+        for obj in dir(instance):
+            if obj.startswith("on_"+event.eventtype()):
+                if type(getattr(instance, obj)) != type(self.alleventshandler):
+                    continue # Who knows ._____.
+                
+                try:
+                    getattr(instance, obj)(event)
+
+                except GameContainer.Game.WerewolfException:
+                    print "HAHAHAHAHAHHAHAHAHJAAHAHahaHHIOfrhrg9ergoaerwrv"
+                    
+
     def alleventshandler(self, event):
         # Sees if a player has an handler for datt
+        for GameObj in self.GameContainer:
+            if GameObj.channame == event.target():
+                self.call_hander(GameObj, event)
+            
         ply = event.source().split('!')[0]
 
         game = self.find_game(ply)
         if not game: return
         
         plyclass = game.PlayerList[ply]
-        for obj in dir(plyclass):
-            if obj.startswith("on_"+event.eventtype()):
-                if type(getattr(plyclass, obj)) != type(self.alleventshandler):
-                    continue # Who knows ._____.
-                try:
-                    getattr(plyclass, obj)(event)
-
-                except GameContainer.Game.WerewolfException:
-                    print "HAHAHAHAHAHHAHAHAHJAAHAHahaHHIOfrhrg9ergoaerwrv"
+        self.call_handler(plyclass, event)
                     
                 
         
