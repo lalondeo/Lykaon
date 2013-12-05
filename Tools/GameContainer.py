@@ -4,7 +4,9 @@ from Werewolf.Lobby import Lobby
 import json # :Oooo
 
 
-userdict = json.loads(open("Config/UserDict.py").read())
+userdict = json.loads(open("Config/UserDict.txt").read())
+
+    
 
 
 class GameContainer:
@@ -49,6 +51,12 @@ class GameContainer:
 
     def kill(self, chan, target):
         self.serv.mode(chan, "-v+q "+target+' '+target)
+
+    def create_config(self, chan):
+        if chan in userdict.keys():
+            return # Nothing to do here
+
+        userdict[chan] = {"stasisdict":{}, adminlist:{}}
 
     def stopgame(self, chan):
         for ply in self.modebank[chan]:

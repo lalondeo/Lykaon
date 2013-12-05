@@ -5,7 +5,7 @@ irclib.DEBUG = 2
 from Werewolf import Game
 from Werewolf import BaseClass
 from threading import Thread
-import traceback, sys
+import traceback, sys, re
 import Commands
 from Tools import GameContainer
 import Tools.config as config
@@ -20,6 +20,10 @@ for obj in globals().keys():
         print obj
         reload(globals()[obj])
 
+# Dirty stuff, currently only supported by freenode.
+csaccesslistsyntax = "\d (\S*) \+(\w*) \[.*]"
+csaccesslistendsyntax = "End of #.* FLAGS listing. "
+
 class Lykaon(ircbot.SingleServerIRCBot):
 
     Games = {} 
@@ -29,7 +33,12 @@ class Lykaon(ircbot.SingleServerIRCBot):
                                            config.NICK,
                                            config.REALNAME)
 
+        self.accesslisttracker = {name:"", flaglist:[], function:None}
         self.nick = config.NICK # Yes, yes :^)
+        if not "freenode" in config.SERVER:
+            self.accesslisttracker = None
+            sys.stdout.write("Warning: The chosen server isn't freenode. Thus, the bot won't be able to use /cs access chan LIST to list bot admins. ")
+            
         try:
           a = Thread(target = self.start)
           a.start()
@@ -87,6 +96,16 @@ class Lykaon(ircbot.SingleServerIRCBot):
                 
     def on_privmsg(self, serv, event):
         self.on_pubmsg(serv, event) # A bit hacky, but meh.
+
+    def on_privnotice(self, serv, event):
+        if event.source().split('!')[0] == "ChanServ":
+            msg = event.arguments()[0]
+            if re.match(csaccesslistsyntax, msg):
+
+                self.accesslisttracker["flaglist"].append(re.findall(csaccesslistsyntax, msg)[0])
+
+            elif re.match(csaccesslistendsyntax, msg):
+                self.accesslisttracker["function"](self.accesslisttracker)
 
     def call_handler(self, instance, event):
         # Used in alleventshandler

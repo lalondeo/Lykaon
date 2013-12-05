@@ -2,6 +2,7 @@
 
 import random, traceback, time, json
 import Game as Game
+
 msgs = json.loads(open("Config/msgs.txt").read())
 
 class PlayerList:
@@ -138,6 +139,8 @@ class Player:
     GUN_HIT_CHANCES = 5.0/7
     # amount of bullets will be between 2 and round(CEIL*NB_OF_PEOPLE)
     BULLET_AMOUNT_CEIL = 0.12
+    GUNNER_KILLS_WOLF_AT_NIGHT_CHANCE = 1.0/4
+    WOLF_GUNNER_CHANCE = 1-GUNNER_KILL_WOLF_AT_NIGHT_CHANCE
     SPECNAME = ""
     GETSPECMSG = lambda *args: None
 
@@ -164,7 +167,14 @@ class Player:
 
     # What to do if ply dies.
     def on_death(self):
-        pass 
+        if self.BULLETS and self.game.PHASE == Game.PHASE_NIGHT:
+            chosenwolf = random.choice(self.game.vote.votes[self]) 
+            if random.random() > self.GUNNER_KILLS_WOLF_AT_NIGHT_CHANCE:
+
+                self.chanmsg(msgs["WOLFGUNKILLATNIGHT"].format(self.name, chosenwolf.name, chosenwolf.name_singular)) # Yay!
+
+            elif random.random() > self.WOLF_GUNNER_CHANCE:
+                # TODO: 2gunar
         
     def on_night__(self):
         
@@ -242,30 +252,41 @@ class Player:
 
     def interpret_event(self, target, event):
         info = (self.name, target, self.name_singular)
-
+        kill = True
 
         if event == Game.GUN_EVENT_HIT:
             if self.game.PlayerList.iswolf(self.game.PlayerList[target]):
-                self.game.kill(target)
+                self.chanmsg(msgs["GUNNERWOLFHIT"].format(target))
 
             else:
+                self.chanmsg(msgs["GUNNERVILLHIT"].format(target))
                 self.game.PlayerList[target].VOTE = None # They can't vote
+                kill = False
 
         elif event == Game.GUN_EVENT_SUICIDE:
+            self.chanmsg(msgs["SUICIDE"].format(self.name, self.name_singular))
             self.game.kill(self.name) # Bye
+            kill = False
 
         elif event == Game.GUN_EVENT_HEADSHOT:
-            self.game.kill(target) # Bye too 
+            self.chanmsg(msgs["HEADSHOTKILL"].format("", target))
+
+        else:
+            self.chanmsg(msgs["GUNNERMISS"].format(self.name))
+            kill = False
+
+        if kill:
+            self.game.kill(target)
 
 
         
             
     def lynch(self, target, *args):
         if self.game.PHASE == Game.PHASE_NIGHT:
-            raise Game.WerewolfException(Game.MSG_PHASEERROR.format("lynch", "day"))
+            raise Game.WerewolfException(msgs["PHASEERROR"].format("lynch", "day"))
 
         elif self.VOTE == None:
-            self.game.serv.privmsg(self.game.channame, Game.MSG_LYNCHWOUNDED.format(self.name))
+            self.game.serv.privmsg(self.game.channame, msgs["LYNCHWOUNDED"].format(self.name))
             return
 
         self.game.vote.vote(self.name, target)
@@ -288,8 +309,6 @@ class Player:
         
 
     def wolf_is_dead(self):
-            
-            
         return True # In case the victim is harlot, he might not be dead after wolf kill
 
     def shoot(self, target, *args):
@@ -430,9 +449,7 @@ class Traitor(Wolf):
 
     name_plural = "traitors"
     SEEN = Villager.name_singular
-    ROLEMSG = "You are a traitor. You are exactly like a\
-                               villager and not even a seer can see your true identity. \
-                               Only detectives can. "
+    ROLEMSG = msgs["TRAITORROLEMSG"]
     
     CURSED = False
     kill = Player.kill
@@ -572,7 +589,7 @@ class Seer(OneUseCommandPlayer):
         else:
             kind = player.name_singular
 
-        self.usermsg(Game.MSG_SEER.format(player.name, kind))
+        self.usermsg(msgs["SEERSEE"].format(player.name, kind))
         
 
         
@@ -597,9 +614,9 @@ class Detective(OneUseCommandPlayer):
         # Bluaheblerg
         if random.random() > self.DETREVEALODDS:
             # R.I.P. :>
-            self.game.wolf.mass_msg(Game.MSG_DEATREVEAL.format(self.name)) 
+            self.game.wolf.mass_msg(msgs["DETREVEAL"].format(self.name)) 
             
-        self.usermsg(Game.MSG_DET.format(self.game.PlayerList[target].name
+        self.usermsg(msgs["DETINVEST"].format(self.game.PlayerList[target].name
                                    , self.game.PlayerList[target].name_singular))
         
         
@@ -615,8 +632,7 @@ class Harlot(OneUseCommandPlayer):
         self.build()
 
     VISITING = ""
-    FAILKILLMSG = "The wolves' selected victim was a harlot, \
-who was not at home last night." # BWAHAHAHAHAHAHAHAHAHAAAAAA
+    FAILKILLMSG = msgs["HARLOTFAILKILL"]
     def on_day(self):
         if not self.VISITING:
             return # Dumb harlot
