@@ -27,6 +27,22 @@ class Vote:
         else:
             self.votes[target].append(source)
             
-        if self.ismajority(len(self.votes[target])):
-            self.game.RunEvent(self.event, target)
-            self.victim = target
+        self.update()
+
+    def update(self):
+        
+        for ply in self.votes.keys():
+            if not ply in self.game.PlayerList.playerlist:
+                del self.votes[ply]
+
+            else:
+                for voter in self.votes[ply]:
+                    if not voter in self.game.PlayerList.playerlist:
+                        del self.votes[ply][voter]
+
+                if self.ismajority(len(self.votes[ply])):
+                    self.game.RunEvent(self.event, target)
+                    self.victim = target
+                    break
+
+            

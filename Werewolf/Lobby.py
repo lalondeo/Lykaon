@@ -147,7 +147,7 @@ class Lobby(BaseClass.BaseChanClass):
             raise Game.WerewolfException("You have to join first ...")
 
         elif (time.time()-self.starttime) < MINJOINTIME:
-            raise Game.WerewolfException("Please wait at least "+str(time.time()-self.waitcount())+" more seconds")
+            raise Game.WerewolfException("Please wait at least "+str(int(round(MINJOINTIME-time.time()+self.starttime)))+" more seconds")
             
         self.startfunc(self.channame)
 

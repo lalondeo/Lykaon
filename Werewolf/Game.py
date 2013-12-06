@@ -133,10 +133,7 @@ class Game(BaseChanClass):
     def __init__(self, players, serv, on_end_func, kill_func, channel):
         serv.action(channel, "sets mode +m on "+channel)
         
-        self.PHASE = PHASE_NIGHT
-
-        
-       
+        self.PHASE = PHASE_NIGHT   
         self.players, self.serv, self.on_end = players, serv, on_end_func
 
         self._kill, self.chan = kill_func, channel
@@ -175,8 +172,15 @@ class Game(BaseChanClass):
             
     
         self.distribute_roles(players)
-        self.mass_call("on_night")
-        self.start_kill()
+        self.event_lynch(None)
+
+    def on_tick(self):
+        # Called every 1 second.
+        self.reaper()
+        if self.vote:
+            # Not much useful, since every special command uses it, but it will avoid bugs in case of a faulty modded function.
+            self.vote.update()
+        
 
     def distribute_roles(self, players):
         print "*** DISTRIBUTION ***"
@@ -239,18 +243,19 @@ class Game(BaseChanClass):
         # Will reap the idlers from the game. 8)
 
         tests = {
-            (lambda tmstp, ply: tmstp-ply.LASTMSG > IDLE_WARNING and not ply.GAVEWARNING): (msgs["IDLEWARN"], False),
-            (lambda tmstp, ply: tmstp-ply.LASTMSG > IDLE_TIMEOUT): (msgs["IDLEKILL"], True),
-            (lambda tmstp, ply: tmstp-ply.PARTTIME > PART_WAIT_TIME): (msgs["PARTKILL"], True),
-            (lambda tmstp, ply: tmstp-ply.QUITTIME > QUIT_WAIT_TIME): (msgs["QUITTIME"], True)}
+            (lambda tmstp, ply: (tmstp-ply.LASTMSG) > IDLE_WARNING and not ply.GAVEWARNING): (msgs["IDLEWARN"], False),
+            (lambda tmstp, ply: (tmstp-ply.LASTMSG) > IDLE_TIMEOUT): (msgs["IDLEKILL"], True),
+            (lambda tmstp, ply: (tmstp-ply.PARTTIME) > PART_WAIT_TIME and ply.PARTTIME != 0): (msgs["PARTMSG"], True),
+            (lambda tmstp, ply: int(tmstp-ply.QUITTIME) > QUIT_WAIT_TIME and ply.QUITTIME != 0): (msgs["QUITMSG"], True)}
 
-        time.sleep()
+        
         for player in self.PlayerList.playerlist:
             timestamp = time.time()
             # Execute all the tests.
             for test in tests.keys():
                 if test(timestamp, player):
-                    serv.privmsg(self.chan, tests[test][0].format(player.name))
+                    print tests[test][0]
+                    self.serv.privmsg(self.chan, (tests[test][0]).format(player.name, player.name_singular))
                     if tests[test][1]:
                         # Not a warning, we have to murder *evil face*
                         self.kill(player.name)
@@ -415,18 +420,18 @@ class Game(BaseChanClass):
         self.PHASESTART = time.time()
         
         
-    def start_kill(self):
+    def day2night(self):
         # Roughly means "day -> night"
-        if not self.phase_test(self.start_kill):
+        if not self.phase_test(self.night2day):
             pass
         
         self.clear_vote()
         self.set_phasestart()
         self.vote = Vote(self, self.get_votingwolfcount, EVENT_WOLFKILL)
 
-    def start_lynch(self):
+    def night2day(self):
         # Roughly means "night -> day"
-        if not self.phase_test(self.start_kill):
+        if not self.phase_test(self.day2night):
             pass
         
         self.first_night = False
@@ -458,11 +463,11 @@ class Game(BaseChanClass):
     
 
     def event_lynch(self, target):
+        self.kill(target.name) if target else None
         self.mass_call("on_night")
-        self.kill(target.name)
         self.PHASE = PHASE_NIGHT
         if not self.isgameover():
-            self.start_kill()
+            self.day2night()
         
     
 
@@ -472,7 +477,7 @@ class Game(BaseChanClass):
         self.mass_call("on_day")
         self.PHASE = PHASE_DAY
         if not self.isgameover():
-            self.start_lynch()
+            self.night2day()
         
         
         

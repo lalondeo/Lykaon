@@ -33,7 +33,7 @@ class Lykaon(ircbot.SingleServerIRCBot):
                                            config.NICK,
                                            config.REALNAME)
 
-        self.accesslisttracker = {name:"", flaglist:[], function:None}
+        self.accesslisttracker = {"name":"", "flaglist":[], "function":None}
         self.nick = config.NICK # Yes, yes :^)
         if not "freenode" in config.SERVER:
             self.accesslisttracker = None
@@ -62,11 +62,9 @@ class Lykaon(ircbot.SingleServerIRCBot):
         self.serv = serv
 
         serv.alleventshandler = self.alleventshandler # I added that
-        
         self.CommandClass = Commands.CommandClass(self.channels, serv)
-        serv.TimeManager = TimeManager.TimeManager(serv) # ASDF
         self.GameContainer = GameContainer.GameContainer(self.channels, serv)
-        
+        serv.TimeManager = TimeManager.TimeManager(serv, self.GameContainer) # ASDF
         for chan in config.CHANS:
             serv.join(chan)
 
@@ -150,6 +148,7 @@ class Lykaon(ircbot.SingleServerIRCBot):
         
         except Game.WerewolfException:
             result = str(sys.exc_info()[1])
+            print "result", result
             
 
         except:
@@ -165,8 +164,6 @@ class Lykaon(ircbot.SingleServerIRCBot):
     
     def on_pubmsg(self, serv, event):
         try:
-
-            raise Game.Player.Game.WerewolfException()
             target = event.target()
             user = event.source().split('!')[0]
             print user, target
@@ -191,7 +188,7 @@ class Lykaon(ircbot.SingleServerIRCBot):
 
 
         except:
-            self.exception_handler()
+            self.exception_handler(serv, event)
 
     def on_nick(self, serv, event):
         lastnick = event.source().split('!')[0]
@@ -239,7 +236,7 @@ def test():
 
         Lykaon.on_pubmsg(serv, event1)
         
-    Lykaon.GameContainer["#asdf"].start()
+    Lykaon.GameContainer["#asdf"].startfunc("#asdf")
     print Lykaon.GameContainer["#asdf"].revealroles()
 
     

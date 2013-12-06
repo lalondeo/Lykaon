@@ -11,6 +11,7 @@ class TimeManager:
     def __init__(self, serv, GameContainer):
         self.serv, self.GameContainer = serv, GameContainer
         Thread(target=self.infiniteloop).start() # Start eet
+        
 
     # Format: (timestamp, function, args)
     # Function's first arg is a TimeManager instance.
@@ -33,6 +34,10 @@ class TimeManager:
         while 1:
             time.sleep(1)
             timestamp = time.time()
+            for game in list(self.GameContainer):
+                if hasattr(game, "PlayerList"):
+                    game.on_tick()
+                
             for obj in self.event_bank:
                 if len(obj) < 2:
                     # We won't make the bot crash because of this

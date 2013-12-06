@@ -120,7 +120,7 @@ class Player:
     def on_joinreaper(self, event):
         if not self.event_test(event): return
 
-        self.PARTTIME = self.QUITTIME = None
+        self.PARTTIME = self.QUITTIME = 0
         self.on_pubmsgreaper(event)
 
     def on_partreaper(self, event):
@@ -140,16 +140,17 @@ class Player:
     # amount of bullets will be between 2 and round(CEIL*NB_OF_PEOPLE)
     BULLET_AMOUNT_CEIL = 0.12
     GUNNER_KILLS_WOLF_AT_NIGHT_CHANCE = 1.0/4
-    WOLF_GUNNER_CHANCE = 1-GUNNER_KILL_WOLF_AT_NIGHT_CHANCE
+    WOLF_GUNNER_CHANCE = 1-GUNNER_KILLS_WOLF_AT_NIGHT_CHANCE
     SPECNAME = ""
     GETSPECMSG = lambda *args: None
 
     # For reaper.
     # these values (except for GAVEWARNING, which is bool) are timestamps.
     LASTMSG = 0
-    PARTTIME = None
-    QUITTIME = None
+    PARTTIME = 0
+    QUITTIME = 0
     GAVEWARNING = False
+
 
     # Data related to first night.  ROLEMSG will be PMd to the player.
     # If DISPLAYPLAYERS = True, a player list will be automatically sent too.
@@ -168,14 +169,21 @@ class Player:
     # What to do if ply dies.
     def on_death(self):
         if self.BULLETS and self.game.PHASE == Game.PHASE_NIGHT:
-            chosenwolf = random.choice(self.game.vote.votes[self]) 
+            chosenwolf = random.choice(self.game.vote.votes[self])
+            
             if random.random() > self.GUNNER_KILLS_WOLF_AT_NIGHT_CHANCE:
 
-                self.chanmsg(msgs["WOLFGUNKILLATNIGHT"].format(self.name, chosenwolf.name, chosenwolf.name_singular)) # Yay!
+                self.chanmsg(msgs["WOLFGUNKILLATNIGHT"].format(self.name,
+                                                               chosenwolf.name,
+                                                               chosenwolf.name_singular)) # Yay!
 
             elif random.random() > self.WOLF_GUNNER_CHANCE:
-                # TODO: 2gunar
-        
+                chosenwolf.usermsg(msgs["TOWOLFGUNNER"].format(self.name))
+                chosenwolf.BULLETS = 2
+                pass
+            
+        return True
+            
     def on_night__(self):
         
         if self.game.first_night and self.ROLEMSG:
@@ -334,6 +342,7 @@ class Wolf(Player):
     name_plural = "wolves"
     distribution = {4:1, 10:2, 15:3, 20:4}
     ROLEMSG = msgs["WOLFROLEMSG"]
+    MISSEDSHOT = False 
 
     CANKILL = True
 
@@ -355,8 +364,8 @@ class Wolf(Player):
 
         self.usermsg(", ".join(seq))
 
-    
-        
+    def on_nightresetmissedshot(self):
+        self.MISSEDSHOT = False
 
     def kill(self, target, *args):
         "Used in order to kill someone"
@@ -377,9 +386,18 @@ class Wolf(Player):
         event = self.gunner_event_chance()
         if self.game.PlayerList.deep_istype(self.game.PlayerList[target], self.__class__):
             event = Game.GUN_EVENT_MISS # Obviously .______.
+            self.MISSEDSHOT = True
+            
+        event = self.gunner_event_chance()
+        if self.BULLETS == 1 and not self.MISSEDSHOT:
+            event = Game.GUN_EVENT_MISS
+
+        elif event == Game.GUN_EVENT_MISS:
+            self.MISSEDSHOT = True
+            
         
             
-        self.interpret_event(self.gunner_event_chance())
+        self.interpret_event(event)
 
 
 
