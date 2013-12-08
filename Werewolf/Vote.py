@@ -1,4 +1,5 @@
 # ASDF
+#import Game
 
 class Vote:
     #Used for both vote/kill events
@@ -41,8 +42,17 @@ class Vote:
                         del self.votes[ply][voter]
 
                 if self.ismajority(len(self.votes[ply])):
-                    self.game.RunEvent(self.event, target)
+                    self.game.RunEvent(self.event)
                     self.victim = target
                     break
+
+    def get_victim(self):
+        countbank = [len(self.votes[x]) for x in self.votes.keys()]
+        if countbank.count(max(countbank)) != 1:
+            return # Even split :(
+
+        for ply in self.votes.keys():
+            if len(self.votes[ply]) == max(countbank):
+                return ply
 
             

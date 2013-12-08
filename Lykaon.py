@@ -178,8 +178,10 @@ class Lykaon(ircbot.SingleServerIRCBot):
                 namespace = chan.PlayerList[user]
 
             else:
-                # Le channel
+                
                 namespace = self.GameContainer[target] # Must work
+                if not user in namespace.players:
+                    return
                 
             text = event.arguments()[0]
             if text[0] == config.COMMANDCHAR:

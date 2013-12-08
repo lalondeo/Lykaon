@@ -17,6 +17,7 @@ class Lobby(BaseClass.BaseChanClass):
         self.waitcount = 0
         self.players = []
         self.hostmasks = []
+    
 
         
         self.channels, self.serv, self.channame, self.startfunc = channels, serv, channame, startfunc
@@ -162,7 +163,8 @@ class Lobby(BaseClass.BaseChanClass):
         raise WerewolfException("Name not found")
             
 
-    def fstasis(self, targetname, penalty):
+    def setstasis(self, targetname, penalty):
+        "moo. "
         if not penalty.isdigit() or not penalty:
             return "you must provide a valid integer. "
             
@@ -175,3 +177,5 @@ class Lobby(BaseClass.BaseChanClass):
 
         if hostmask in self.players:
             self.leave(self.find_hostmask(targetname)) # Rude :>
+
+    admincmdlist = [setstasis]

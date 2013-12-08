@@ -98,11 +98,15 @@ class Player:
 
     def __init__(self, name, game):
         self.name, self.game = name, game
+        self.death_events_table =  {Game.EVENT_WOLFKILL: "on_wolfdeath",
+                                    Game.EVENT_LYNCHKILL: "on_lynchdeath"}
         self.LASTMSG = time.time() # asdf
         if hasattr(self, "init2"):
             self.init2()
 
     # Reperz
+
+    
 
     def event_test(self, event):
         if self.game.channame != event.target():
@@ -167,7 +171,19 @@ class Player:
         self.game.serv.privmsg(self.name, msg)
 
     # What to do if ply dies.
-    def on_death(self):
+    def on_death(self, ev, *args, **kw):
+        if not ev in self.death_events_table:
+            raise Exception("Unknown event type. ")
+
+        # This stuff isn't really neat, but meh.
+        # For the class and for aaaaall the parent classes, call the said attr.
+        for klass in list(self.__class__.__bases__)+[self.__class__]:
+            if not hasattr(klass, self.death_events_table[ev]):
+                continue
+            
+            getattr(klass, self.death_events_table[ev])(self, *args, **kw)
+        
+    def on_wolfdeath(self):
         if self.BULLETS and self.game.PHASE == Game.PHASE_NIGHT:
             chosenwolf = random.choice(self.game.vote.votes[self])
             
@@ -210,7 +226,7 @@ class Player:
 
 
     SEEN = ""
-    FAILKILLMSG = "" # Currently only used by harlot and GA, is printed if wolf_is_dead returns False
+
     
     # Might sound retarded, but harlot/werecrow/GA needs to keep a reference to Player.
     # Harlot needs to find out if the visited user is dead.
@@ -316,7 +332,7 @@ class Player:
         raise Game.WerewolfException("You are not a wolf.") # Moo
         
 
-    def wolf_is_dead(self):
+    def on_wolfdeath(self):
         return True # In case the victim is harlot, he might not be dead after wolf kill
 
     def shoot(self, target, *args):
@@ -565,14 +581,14 @@ class OneUseCommandPlayer(Villager):
 
     def runcommand(self, target):
         if target == self.name:
-            raise WerewolfException(Game.MSG_OPERHIMSELF.format(self.OPERATIONNAME))
+            raise Game.WerewolfException(msgs["DOONHIMSELF"].format(self.OPERATIONNAME))
 
         elif self.game.PHASE != self.PHASE:
             raise Game.WerewolfException(
-                Game.MSG_PHASEERROR.format(self.OPERATIONNAME, self.convert_name(self.PHASE)))
+                msgs["PHASEERROR"].format(self.OPERATIONNAME, self.convert_name(self.PHASE)))
 
         elif self.USEDTHECOMMAND:
-            raise Game.WerewolfException(Game.MSG_ALREADYUSEDCMD.format(self.OPERATIONNAME))
+            raise Game.WerewolfException(msgs["ALREADYUSEDCMD"].format(self.OPERATIONNAME))
 
         self.USEDTHECOMMAND = True
         self.game.serv.privmsg(self.name, self._cmd(target))
@@ -647,6 +663,7 @@ class Harlot(OneUseCommandPlayer):
     def init2(self):
         self.PHASE = Game.PHASE_NIGHT
         self.OPERATIONNAME = "visit"
+        
         self.build()
 
     VISITING = ""
@@ -666,11 +683,14 @@ class Harlot(OneUseCommandPlayer):
         self.OBSERVE = True
         self.VISITING = ""
         
-    def wolf_is_dead(self):
+    def on_wolfdeath(self):
         return not bool(self.VISITING)
 
     def _cmd(self, target):
         self.VISITING = self.game.PlayerList[target]
+        
+        self.usermsg(msgs["HARLOTVISITMSG"].format(self.VISITING.name))
+        self.VISITING.usermsg(msgs["HARLOTVISITMSG"].format(self.name))
           
             
 
