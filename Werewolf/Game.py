@@ -149,9 +149,11 @@ class Game(BaseChanClass):
         self.first_night = True
         self.role_list = []
         self.PlayerList = Player.PlayerList()
+
+        to_night = lambda: self.do_phase_change("on_night", "NIGHTMSG", PHASE_NIGHT, self.get_votingwolfcount, EVENT_WOLFKILL)
         
-        self.events[EVENT_LYNCHKILL].append(self.event_lynch)
-        self.events[EVENT_WOLFKILL].append(self.event_kill)
+        self.events[EVENT_LYNCHKILL].append(lambda: self.kill_victim(to_night))
+        self.events[EVENT_WOLFKILL].append(lambda: self.kill_victim(lambda: self.do_phase_change("on_day", "DAYMSG", PHASE_DAY, self.get_nonwoundedcount, EVENT_LYNCHKILL)))
         
         
 
@@ -173,7 +175,8 @@ class Game(BaseChanClass):
             
     
         self.distribute_roles(players)
-        self.event_lynch()
+        to_night()
+        
 
     def on_tick(self):
         # Called every 1 second.
@@ -420,105 +423,61 @@ class Game(BaseChanClass):
 
             # Yes, function may seem retaaaaaaaaarded, but it is used for action too
             function(self.serv)(player.name, _format.format(msg, nick)) # asdf
-            
-            
-    def clear_vote(self):
-        if hasattr(self, "vote"):
-            if self.vote:
-                del self.vote
+    
+    def mass_call(self, methodname, *args, **kw):
+        # For phase changes and deaths.  
+        for player in self.PlayerList.playerlist:
+            for i in dir(player):
+                if i.startswith(methodname):
+                    # Call eeeeeeet
+                    getattr(player, i)(*args, **kw)
 
 
     def phase_test(self, func):
-        
+        # moo
         if (time.time() - self.PHASESTART) < 10:
             self.serv.TimeManager.addfunc(func, time.time()-self.PHASESTART)
             return False # NEIN
 
         return True
 
-    
 
-    def set_phasestart(self):
+    def do_phase_change(self, event_name, phasemsgid, phaseid, votetestfunc, event):
+        # Either night to day or day to night
+        self.mass_call(event_name)
+        self.serv.privmsg(self.channame, msgs[phasemsgid])
+        self.PHASE = phaseid
         self.PHASESTART = time.time()
-        self.PHASEWARN = 0
+        self.PHASEWARN = 0 
         
-        
-    def day2night(self):
-        # Roughly means "day -> night"
-        if not self.phase_test(self.night2day):
-            pass
+        self.vote = None
+        self.vote = Vote(self, votetestfunc, event)
 
-        
-        self.mass_call("on_night")
-        self.serv.privmsg(self.channame, msgs["NIGHTMSG"])
-        self.PHASE = PHASE_NIGHT
-        
-        self.clear_vote()
-        self.set_phasestart()
-        self.vote = Vote(self, self.get_votingwolfcount, EVENT_WOLFKILL)
 
-    def night2day(self):
-        # Roughly means "night -> day"
-        if not self.phase_test(self.day2night):
-            pass
+    msgtable = {PHASE_NIGHT: ("NOKILL", "WOLFKILL"),
+                PHASE_DAY: ("NOLYNCH", "LYNCHKILL")}
 
-        self.mass_call("on_day")
-        self.serv.privmsg(self.channame, msgs["DAYMSG"]])    
-        self.PHASE = PHASE_DAY
-        self.first_night = False
-        self.clear_vote()
-        self.set_phasestart()
-        self.vote = Vote(self, self.get_nonwoundedcount, EVENT_LYNCHKILL)
-        
+    def kill_victim(self, phasechangefunc):
+        victim = self.vote.get_victim()
+        if not victim:
+            self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE]][0])
 
-    def votenum_func(self):
-        if self.PHASE == PHASE_DAY:
-            return self.get_nonwoundedcount()
+        else:
+            # TODO: send da message
+            victim.on_death(self.PHASE)
+            if not False in self.RESULTS:
+                self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE]][1].format(victim.name, victim.name_singular))
+                self.kill(victim.name)
 
-        return self.get_votingwolfcount()
-
-    def mass_call(self, methodname, *args, **kw):
-        for player in self.PlayerList.playerlist:
-            for i in dir(player):
-                if i.startswith(methodname):
-                    getattr(player, i)(*args, **kw)
-
-    
-
-    def event_lynch(self):
-        target = self.vote.get_victim()
-        target.on_death(EVENT_LYNCH)
-        if False in self.RESULTS:
-            self.vote.votes[victim] = []
             self.RESULTS = []
-            return
 
-        self.RESULTS = []
-            
-        self.kill(target.name)
-        if not self.isgameover():
-            self.day2night()
-        
-    
-
-    
-    def event_kill(self):
-        target = self.vote.get_victim()
-        target.on_death(EVENT_KILL)
-        if False in self.RESULTS:
-            self.vote.votes[victim] = []
-            self.RESULTS = []
-            return
-        
-        self.RESULTS = []
-        self.kill(target.name)
-        if not self.isgameover():
-            self.night2day()
+        phasechangefunc()
         
         
         
 
     def RunEvent(self, event, *args):
+        # Ugly, but meh.
         for func in self.events[event]:
             func(*args)
 
