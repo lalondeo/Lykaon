@@ -1,1 +1,1 @@
-{}
+{"#asdf": {"adminlist": [], "stasisdict": {}}}

@@ -1,7 +1,7 @@
 import Player as Player
 from Vote import Vote
 from BaseClass import BaseChanClass
-import random, math, time
+import random, math, time, traceback
 import copy, json
 
 spectext = "Out of these players, there are {0}"
@@ -41,66 +41,19 @@ QUIT_WAIT_TIME = 30
 
 # For gunner
 GUN_EVENT_HIT = 0
-GUN_EVENT_MISS = 1
-GUN_EVENT_SUICIDE = 2
-GUN_EVENT_HEADSHOT = 3
+GUN_EVENT_WOLFKILL = 1
+GUN_EVENT_MISS = 2
+GUN_EVENT_SUICIDE = 3
+GUN_EVENT_HEADSHOT = 4
 
 
-# Messages
-MSG_GUNNERHIT = "{0} shoots {1} with a silver bullet!"
-MSG_GUNNERWOLFKILL = "{0} is a wolf, and is dying from the silver bullet."
-MSG_GUNNERHEADSHOTKILL = "{1} is not a wolf but was accidentally fatally injured."
-MSG_GUNNERNONWOLFHIT = "{1} is a villager and was injured. Luckily "+\
-                          "the injury is minor and will heal after a day of "+\
-                          "rest."
-MSG_GUNNERSUICIDE = "Oh no! {0}'s gun was poorly maintained and has exploded! "+\
-                       "The village mourns a gunner-{2}."
-MSG_GUNNERMISS = "{0} is a lousy shooter and missed!"
 
-# Moo
-MSG_PHASEERROR = "You may only {0} people during {1}." # Shoot, see, kill, observe, id, guard, ect. ect. ect.
-MSG_ALREADYUSEDCMD = "You may only {0} once per round. "
-
-
-MSG_LYNCHWOUNDED = "You are wounded and resting, thus you are unable to vote for the day."
-
-MSG_SELECTED = "{0} has selected {1} to be {2}!" # 1) author 2) target 3) action
-
-#WereCrow
-MSG_WERECROWOBSERVEERROR = "You are already observing {0}. "
-MSG_WERECROWWASINBED = "As the sun rises, you conclude that {0} was sleeping \
-all night long, and you fly back to your house."
-MSG_WERECROWWASNTINBED = "As the sun rises, you conclude that {0} was not in bed all night\
-, and you fly back to your house."
-MSG_OBSERVINGWOLFERROR = "Flying to another wolf's house is a waste of time."
-MSG_WERECROWOBSERVE = "You transform into a large crow and start your flight \
-                   to {0}'s house. You will return after \
-                  collecting your observations when day begins."
-MSG_CROWALREADYKILLING = "You are already killing someone. "
-
-MSG_KILLINGWOLFERROR = "You can't kill another wolf ..."
-
-#Harlot
-MSG_ALREADYVISITING = "You are already spending your night with {0}"
-
-#Seer
-MSG_OPERHIMSELF = "Why on earth would you {0} yourself..."
-MSG_SEER = "You have a vision; in this vision, you see that {0} is a {1}!"
-
-# Drunk
-MSG_DRUNK = "You have been drinking too much! you are the village drunk. "
-
-# Detective
-
-MSG_DET = "The results of your investigation have returned. {0} is a... {1}!"
-MSG_DETREVEAL = "Someone accidentally drops a paper. \
-The paper reveals that {0} is a detective!" # o noez
 
 # Msg tables
 
-gunner_msg_dict = {GUN_EVENT_MISS: MSG_GUNNERMISS,
-                   GUN_EVENT_SUICIDE: MSG_GUNNERSUICIDE,
-                   GUN_EVENT_HEADSHOT: MSG_GUNNERHEADSHOTKILL}
+gunner_msg_dict = {GUN_EVENT_MISS: msgs["GUNNERMISS"],
+                   GUN_EVENT_SUICIDE: msgs["SUICIDE"],
+                   GUN_EVENT_HEADSHOT: msgs["HEADSHOTKILL"]}
                    
 
 
@@ -135,7 +88,7 @@ class Game(BaseChanClass):
         
         self.PHASE = PHASE_NIGHT
         
-        self.players, self.serv, self.on_end = players, serv, on_end_func
+        self.players, self.serv, self.on_end = copy.deepcopy(players), serv, on_end_func
 
         self._kill, self.chan = kill_func, channel
         self.channame = channel
@@ -313,18 +266,23 @@ class Game(BaseChanClass):
     def revealroles(self, singularverb = "is", pluralverb = "are"):
         "asdfasdfasdf"
 
+        print traceback.extract_stack()
+
         roles = {}
         for char in self.PlayerList.playerlist:
             nametuple = (char.name_singular, char.name_plural)
-            if not char.nametuple in roles.keys():
+            if not nametuple in roles.keys():
                 roles[nametuple] = [char.name]
 
             else:
-                roles[char.__class__].append(char.name)
+                roles[nametuple].append(char.name)
 
         for spec in self.current_specs:
-            roles[spec[0]] = spec[1]
+            if not spec[0] in roles.keys():
+                roles[spec[0]] = []
+            roles[spec[0]].append(spec[1].name)
 
+        print roles
         result = []
         for names in roles.keys():
             verb = pluralverb
@@ -332,10 +290,10 @@ class Game(BaseChanClass):
             plynames = roles[names]
             
             if len(plynames) == 1:
-                result.append("The "+names[0]+' '+singularverb+' '+plyname[0])
+                result.append("The "+names[0]+' '+singularverb+' '+plynames[0])
                 continue
 
-            result.append("The "+" ".join([rolename, verb])+", ".join(plynames[:-1])+' and '+plynames[-1])
+            result.append("The "+" ".join([rolename, verb+' '])+", ".join(plynames[:-1])+' and '+plynames[-1])
         return ". ".join(result)
             
 
@@ -464,12 +422,12 @@ class Game(BaseChanClass):
 
         else:
             # TODO: send da message
-            victim.on_death(self.PHASE)
+            self.RESULTS = []
+            victim.on_death(EVENT_WOLFKILL if self.PHASE == PHASE_NIGHT else EVENT_LYNCHKILL)
             if not False in self.RESULTS:
-                self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE]][1].format(victim.name, victim.name_singular))
+                self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE][1]].format(victim.name, victim.name_singular))
                 self.kill(victim.name)
 
-            self.RESULTS = []
 
         phasechangefunc()
         
@@ -484,6 +442,7 @@ class Game(BaseChanClass):
     def end(self, happyending=True):
         # End eet
         # happyending = villagers have won or not
+        print "moo"
         self.ENDED = True
         text = ""
         if happyending:
@@ -494,6 +453,8 @@ class Game(BaseChanClass):
 
         else:
             text = "NOWIN" # Some big meanie aborted it
+
+
 
         self.serv.privmsg(self.channame, msgs[text])
         self.serv.privmsg(self.channame, self.revealroles(singularverb = "was", pluralverb = "were"))

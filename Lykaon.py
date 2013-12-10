@@ -135,16 +135,17 @@ class Lykaon(ircbot.SingleServerIRCBot):
                     
                 
         
-    def exception_handler(self, serv, event):
+    def exception_handler(self, serv, event, exc):
         # Very weird class.
         # Re-raises the exception to catch it in the proper way
         # Probably terribly retarded, live with it.
 
         result = ""
         user = event.source().split('!')[0]
+        print "HAAAAAAAAAAAA"
 
         try:
-            raise sys.exc_info()[1]
+            raise exc[1]
         
         except Game.WerewolfException:
             result = str(sys.exc_info()[1])
@@ -164,6 +165,7 @@ class Lykaon(ircbot.SingleServerIRCBot):
     
     def on_pubmsg(self, serv, event):
         try:
+            print "HAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
             target = event.target()
             user = event.source().split('!')[0]
             print user, target
@@ -172,25 +174,26 @@ class Lykaon(ircbot.SingleServerIRCBot):
                 chan = self.find_game(user)
                 if not chan:
                     return
-
                 target = self.nick
-
                 namespace = chan.PlayerList[user]
-
+                
             else:
-                
                 namespace = self.GameContainer[target] # Must work
-                if not user in namespace.players:
+                if not user in namespace.players and namespace.__class__ == GameContainer.Game:
                     return
-                
+
+        
             text = event.arguments()[0]
+            print "TEXT", text
             if text[0] == config.COMMANDCHAR:
                 self.CommandClass.call_func(target, event.source(), namespace, text[1:])
 
 
 
         except:
-            self.exception_handler(serv, event)
+            print sys.exc_info()
+            self.exception_handler(serv, event, sys.exc_info())
+            traceback.print_exc()
 
     def on_nick(self, serv, event):
         lastnick = event.source().split('!')[0]

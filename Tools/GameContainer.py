@@ -36,17 +36,17 @@ class GameContainer:
 
         return None
 
+    def save_config(self):
+        open("Config/UserDict.txt", "w").write(json.dumps(userdict))
+
     def createlobby(self, chan):
-        if not chan in self.stasisdicts.keys():
-            self.stasisdicts[chan] = {}
-        if chan in self.container.keys():
-            del self.container[chan]
+        self.create_config(chan)
             
         self.container[chan] = Lobby(self.channels,
                                      self.serv,
                                      chan,
                                      self.start_game,
-                                     self.stasisdicts[chan],
+                                     userdict[chan],
                                      self.container)
 
     def kill(self, chan, target):
@@ -56,7 +56,7 @@ class GameContainer:
         if chan in userdict.keys():
             return # Nothing to do here
 
-        userdict[chan] = {"stasisdict":{}, adminlist:{}}
+        userdict[chan] = {"stasisdict": {} , "adminlist": []}
 
     def stopgame(self, chan):
         for ply in self.modebank[chan]:
@@ -65,11 +65,9 @@ class GameContainer:
         self.serv.mode(chan, "-m")
 
     def start_game(self, chan):
-
-        ## TODO: add tests
         
         plylist = self.container[chan].players
-        
+
         del self.container[chan]
         self.container[chan] = Game(plylist,
                                     self.serv,
@@ -77,7 +75,6 @@ class GameContainer:
                                     lambda target: self.kill(chan, target),
                                     chan)
 
+
         
         self.serv.mode(chan, "+m")
-
-    #def    

@@ -11,6 +11,7 @@ class TimeManager:
     def __init__(self, serv, GameContainer):
         self.serv, self.GameContainer = serv, GameContainer
         Thread(target=self.infiniteloop).start() # Start eet
+        self.kill = False
         
 
     # Format: (timestamp, function, args)
@@ -32,8 +33,12 @@ class TimeManager:
         
     def infiniteloop(self):
         while 1:
+            if self.kill:
+                return
+            
             time.sleep(1)
             timestamp = time.time()
+            self.GameContainer.save_config()
             for game in list(self.GameContainer):
                 if hasattr(game, "PlayerList"):
                     game.on_tick()

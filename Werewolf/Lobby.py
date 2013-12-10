@@ -10,27 +10,26 @@ MAXWAITCOUNT = 5
 class Lobby(BaseClass.BaseChanClass):
     
 
-    def __init__(self, channels, serv, channame, startfunc, StasisDict,
+    def __init__(self, channels, serv, channame, startfunc, userdict,
                  container):
 
         self.starttime = 0
         self.waitcount = 0
         self.players = []
         self.hostmasks = []
-    
+        self.admins = userdict["adminlist"]
+        self.stasisdict = userdict["stasisdict"]
 
         
         self.channels, self.serv, self.channame, self.startfunc = channels, serv, channame, startfunc
-        self.StasisDict, self.container = StasisDict, container
+        self.userdict, self.container = userdict, container
 
-        if channame in StasisDict.keys():
-            for accname in StasisDict[channame].keys():
-                if accame in StasisDict[channame]:
-                    if StasisDict[channame][accname] > 0: # -1 means banned
-                        StasisDict[channame][accname] -= 1
+        for accname in self.stasisdict.keys():
+                if self.stasisdict[accname] > 0: # -1 means banned
+                    self.stasisdict[accname] -= 1
 
-                    if StasisDict[channame][accname] == 0:
-                        del StasisDict[channame][accname] # 4phun
+                    if self.stasisdict[accname] == 0:
+                        del self.stasisdict[accname] # 4phun
 
         # moo
 
@@ -71,8 +70,8 @@ class Lobby(BaseClass.BaseChanClass):
         name = self.get_nickname(authorname)
         
         hostmask = self.get_hostmask(authorname)
-        if hostmask in self.StasisDict.keys():
-            self.serv.notice(name, "Sorry, but you are in stasis for %s games" % self.StasisDict[hostmask])
+        if hostmask in self.userdict["stasisdict"].keys():
+            self.serv.notice(name, "Sorry, but you are in stasis for %s games" % self.userdict["stasisdict"][hostmask])
 
         elif name in self.players:
             raise Game.WerewolfException("You are already in the game. ")
@@ -82,6 +81,7 @@ class Lobby(BaseClass.BaseChanClass):
             if (name in self.container[chan].players):
                 raise Game.WerewolfException("You can't play in two channels at a time. ")
 
+        print "OKEY"
         self.players.append(name)
         self.hostmasks.append(hostmask)
         self.serv.privmsg(self.channame, msgs["JOINMSG"].format(name))

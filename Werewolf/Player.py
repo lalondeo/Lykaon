@@ -100,6 +100,7 @@ class Player:
         self.name, self.game = name, game
         self.death_events_table =  {Game.EVENT_WOLFKILL: "on_wolfdeath",
                                     Game.EVENT_LYNCHKILL: "on_lynchdeath"}
+        
         self.LASTMSG = time.time() # asdf
         if hasattr(self, "init2"):
             self.init2()
@@ -240,6 +241,13 @@ class Player:
     VOTE = True
     ONDEATHFUNCS = []
 
+    def on_shoot(self, source):
+        x = random.random()
+        if x < self.HEADSHOT_CHANCES:
+            return GUN_EVENT_HEADSHOT
+
+        return GUN_EVENT_HIT
+
     
 
     def gunner_event_chance(self, target):
@@ -253,23 +261,12 @@ class Player:
         while returnevent == -1:
             x = eventdict.keys()
             random.shuffle(x)
-            
-
             for i in x:
                 seed = random.random()
-                
                 if seed < eventdict[i]:
                     # Nice
                     returnevent = i
                     break
-
-        if (returnevent == Game.GUN_EVENT_HIT) and not (
-            self.game.PlayerList.deep_istype(self.game.PlayerList[target], Wolf)) and not (
-                random.random() > self.HEADSHOT_CHANCES) and not(
-                    self.game.PlayerList.istype(self.game.PlayerList[target], Traitor)):
-
-
-            return GUN_EVENT_HEADSHOT
 
         return returnevent
                         
@@ -279,14 +276,13 @@ class Player:
         kill = True
 
         if event == Game.GUN_EVENT_HIT:
-            if self.game.PlayerList.iswolf(self.game.PlayerList[target]):
-                self.chanmsg(msgs["GUNNERWOLFHIT"].format(target))
+    
+            self.game.PlayerList[target].VOTE = None # They can't vote
+            kill = False
 
-            else:
-                self.chanmsg(msgs["GUNNERVILLHIT"].format(target))
-                self.game.PlayerList[target].VOTE = None # They can't vote
-                kill = False
-
+        elif event == Game.GUN_EVENT_WOLFKILL:
+            self.chanmsg(msgs["GUNNERWOLFHIT"].format(target))
+            
         elif event == Game.GUN_EVENT_SUICIDE:
             self.chanmsg(msgs["SUICIDE"].format(self.name, self.name_singular))
             self.game.kill(self.name) # Bye
@@ -321,7 +317,11 @@ class Player:
     def _shoot(self, target):
         
         # Can be replaced for wolf/drunk/anything else
-        self.interpret_event(target.name, self.gunner_event_chance(target))
+        event = self.gunner_event_chance(target)
+        if event == Game.GUN_EVENT_HIT:
+            event = self.game.PlayerList[event].on_shoot(self.name)
+        
+        self.interpret_event(target.name, event)
         
         
         
@@ -389,10 +389,10 @@ class Wolf(Player):
             raise Game.WerewolfException("You are not allowed to vote.")
             
         if self.game.PHASE != Game.PHASE_NIGHT:
-            raise Game.WerewolfException(Game.MSG_PHASEERROR)
+            raise Game.WerewolfException(msgs["PHASEERROR"])
 
         elif self.game.PlayerList.deep_istype(self.game.PlayerList[target], Wolf):
-            raise Game.WerewolfException(Game.MSG_KILLINGWOLFERROR)
+            raise Game.WerewolfException(msgs["KILLINGWOLFERROR"])
 
         self.game.vote.vote(self.name, target)
         
@@ -433,7 +433,7 @@ class Werecrow(Wolf):
         if not self.OBSERVING:
             return
         
-        msg = Game.MSG_WERECROWWASINBED if self.OBSERVING.OBSERVE else Game.MSG_WERECROWWASNTINBED
+        msg = msgs["WERECROWWASINBED"] if self.OBSERVING.OBSERVE else msgs["WERECROWWASNTINBED"]
 
         self.usermsg(msg.format(self.OBSERVING.name))
         self.OBSERVING = None
@@ -443,23 +443,23 @@ class Werecrow(Wolf):
         "Used in order to observe someone.  "
         if self.OBSERVING:
             raise Game.WerewolfException(
-                Game.MSG_WERECROWOBSERVEERROR.format(self.OBSERVING.name))
+                msgs["CROWOBSERVEERROR"].format(self.OBSERVING.name))
 
         elif self.game.PlayerList.deep_istype(self.game.PlayerList[target], Wolf):
             raise Game.WerewolfException(
-                Game.MSG_OBSERVINGWOLFERROR)
+                msgs["WERECROWOBSERVINGWOLFERROR"])
 
         elif self.game.PHASE != Game.PHASE_NIGHT:
             raise Game.WerewolfException(
-                Game.MSG_PHASEERROR.format("observe", "night"))
+                msgs["PHASEERROR"].format("observe", "night"))
 
         elif self.game.vote.get_vote(self):
-            raise Game.WerewolfException(Game.MSG_CROWALREADYKILLING)
+            raise Game.WerewolfException(msgs["WERECROWALREADYKILLING"])
 
 
         self.CANKILL = False
         self.OBSERVING = self.game.PlayerList[target]
-        self.usermsg(Game.MSG_WERECROWOBSERVE.format(target))
+        self.usermsg(msgs["WERECROWOBSERVE"].format(target))
    
             
         
@@ -520,10 +520,9 @@ class Drunk(Villager):
     ROLEMSG = "You have been drinking too much: you are the village drunk!"
 
     def init2(self):
-        self.BULLET_AMOUNT_CELL = Player.BULLET_AMOUNT_CEIL*3
+        self.BULLET_AMOUNT_CEIL = Player.BULLET_AMOUNT_CEIL*3
     
-    def on_night(self):
-        self.usermsg(self.name+": "+Game.MSG_DRUNK)
+
 
     distribution = {8:1}
         
@@ -533,6 +532,7 @@ class Drunk(Villager):
     GUN_HIT_CHANCES = 2.0/7
     GUN_MISS_CHANCES = 3.0/7
     GUN_SUICIDE_CHANCES = 2.0/7
+    ROLEMSG = msgs["DRUNKROLEMSG"]
     
 
 class OneUseCommandPlayer(Villager):
