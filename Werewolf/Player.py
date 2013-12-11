@@ -78,9 +78,6 @@ class PlayerList:
 
     def __delitem__(self, name):
         name = self[name]
-        if not name.on_death():
-            raise Game.WerewolfException("Le fail") 
-        
         name.DEAD = True
         self.playerlist.remove(name)
 
@@ -395,6 +392,7 @@ class Wolf(Player):
             raise Game.WerewolfException(msgs["KILLINGWOLFERROR"])
 
         self.game.vote.vote(self.name, target)
+        self.chanmsg(msgs["WOLFKILLMSG"].format(target))
         
             
             
@@ -623,7 +621,8 @@ class Seer(OneUseCommandPlayer):
         else:
             kind = player.name_singular
 
-        self.usermsg(msgs["SEERSEE"].format(player.name, kind))
+        return msgs["SEERSEE"].format(player.name, kind)
+        
         
 
         
@@ -650,7 +649,7 @@ class Detective(OneUseCommandPlayer):
             # R.I.P. :>
             self.game.wolf.mass_msg(msgs["DETREVEAL"].format(self.name)) 
             
-        self.usermsg(msgs["DETINVEST"].format(self.game.PlayerList[target].name
+        return(msgs["DETINVEST"].format(self.game.PlayerList[target].name
                                    , self.game.PlayerList[target].name_singular))
         
         
@@ -670,14 +669,14 @@ class Harlot(OneUseCommandPlayer):
     FAILKILLMSG = msgs["HARLOTFAILKILL"]
     def on_day(self):
         if not self.VISITING:
-            return # Dumb harlot
+            return # moo
         
         if self.game.PlayerList.iswolf(self.VISITING):
-            self.game.serv.privmsg(self.game.channame, "O NOEZ I VIZIT WULV")
+            self.chanmsg(msgs["HARLOTKILLATNIGHT"].format(self.name, "a wolf's house"))
             self.game.kill(self.name)
 
         elif self.VISITING.DEAD == True:
-            self.game.serv.privmsg(self.game.channame, "O NOEZ I VIZIT VIKTEM")
+            self.chanmsg(msgs["HARLOTKILLATNIGHT"].format(self.name, "the victim's house"))
             self.game.kill(self.name)
 
         self.OBSERVE = True
@@ -688,9 +687,9 @@ class Harlot(OneUseCommandPlayer):
 
     def _cmd(self, target):
         self.VISITING = self.game.PlayerList[target]
-        
-        self.usermsg(msgs["HARLOTVISITMSG"].format(self.VISITING.name))
         self.VISITING.usermsg(msgs["HARLOTVISITMSG"].format(self.name))
+
+        return msgs["HARLOTVISITMSG"].format(self.VISITING.name)
           
             
 

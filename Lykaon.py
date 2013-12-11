@@ -142,7 +142,6 @@ class Lykaon(ircbot.SingleServerIRCBot):
 
         result = ""
         user = event.source().split('!')[0]
-        print "HAAAAAAAAAAAA"
 
         try:
             raise exc[1]
@@ -165,7 +164,6 @@ class Lykaon(ircbot.SingleServerIRCBot):
     
     def on_pubmsg(self, serv, event):
         try:
-            print "HAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
             target = event.target()
             user = event.source().split('!')[0]
             print user, target

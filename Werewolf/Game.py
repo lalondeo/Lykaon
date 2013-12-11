@@ -200,7 +200,7 @@ class Game(BaseChanClass):
         # Will reap the idlers from the game. 8)
 
         tests = {
-            (lambda tmstp, ply: (tmstp-ply.LASTMSG) > IDLE_WARNING and not ply.GAVEWARNING): (msgs["IDLEWARN"], False),
+            (lambda tmstp, ply: (tmstp-ply.LASTMSG) > IDLE_WARNING and not ply.GAVEWARNING): (msgs["IDLEWARN"], False, ("GAVEWARNING", True)),
             (lambda tmstp, ply: (tmstp-ply.LASTMSG) > IDLE_TIMEOUT): (msgs["IDLEKILL"], True),
             (lambda tmstp, ply: (tmstp-ply.PARTTIME) > PART_WAIT_TIME and ply.PARTTIME != 0): (msgs["PARTMSG"], True),
             (lambda tmstp, ply: int(tmstp-ply.QUITTIME) > QUIT_WAIT_TIME and ply.QUITTIME != 0): (msgs["QUITMSG"], True)}
@@ -213,6 +213,10 @@ class Game(BaseChanClass):
                 if test(timestamp, player):
                     print tests[test][0]
                     self.serv.privmsg(self.chan, (tests[test][0]).format(player.name, player.name_singular))
+
+                    if len(tests[test]) == 3:
+                        setattr(player, tests[test][2][0], tests[test][2][1])
+                        
                     if tests[test][1]:
                         # Not a warning, we have to murder *evil face*
                         self.kill(player.name)
@@ -482,7 +486,7 @@ class Game(BaseChanClass):
    
     def kill(self, target):
         del self.PlayerList[target]
-        self.players.remove(target.name)
+        self.players.remove(target)
         self._kill(target)
         
 
