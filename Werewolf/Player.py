@@ -172,17 +172,23 @@ class Player:
     def on_death(self, ev, *args, **kw):
         if not ev in self.death_events_table:
             raise Exception("Unknown event type. ")
+        
+        codebank = []
 
         # This stuff isn't really neat, but meh.
         # For the class and for aaaaall the parent classes, call the said attr.
         for klass in list(self.__class__.__bases__)+[self.__class__]:
             if not hasattr(klass, self.death_events_table[ev]):
                 continue
-            
-            getattr(klass, self.death_events_table[ev])(self, *args, **kw)
+            func = getattr(klass, self.death_events_table[ev])
+            if func.func_code.co_code in codebank:
+                continue # Another safe guard, avoids to call the same func twice.
+
+            codebank.append(func.func_code.co_code)
+            func(self, *args, **kw)
         
     def on_wolfdeath(self):
-        if self.BULLETS and self.game.PHASE == Game.PHASE_NIGHT:
+        if self.BULLETS:
             chosenwolf = random.choice(self.game.vote.votes[self])
             
             if random.random() > self.GUNNER_KILLS_WOLF_AT_NIGHT_CHANCE:
@@ -194,7 +200,8 @@ class Player:
             elif random.random() > self.WOLF_GUNNER_CHANCE:
                 chosenwolf.usermsg(msgs["TOWOLFGUNNER"].format(self.name))
                 chosenwolf.BULLETS = 2
-                pass
+
+            self.BULLETS = 0
             
         return True
             
@@ -391,8 +398,9 @@ class Wolf(Player):
         elif self.game.PlayerList.deep_istype(self.game.PlayerList[target], Wolf):
             raise Game.WerewolfException(msgs["KILLINGWOLFERROR"])
 
+        self.usermsg(msgs["WOLFKILLMSG"].format(target))
         self.game.vote.vote(self.name, target)
-        self.chanmsg(msgs["WOLFKILLMSG"].format(target))
+        
         
             
             
@@ -665,8 +673,10 @@ class Harlot(OneUseCommandPlayer):
         
         self.build()
 
-    VISITING = ""
+    VISITING = None
     FAILKILLMSG = msgs["HARLOTFAILKILL"]
+    def wolfdeath(self):
+        return not bool(self.VISITING)
     def on_day(self):
         if not self.VISITING:
             return # moo
@@ -680,14 +690,19 @@ class Harlot(OneUseCommandPlayer):
             self.game.kill(self.name)
 
         self.OBSERVE = True
-        self.VISITING = ""
+        self.VISITING = None
         
     def on_wolfdeath(self):
-        return not bool(self.VISITING)
+        toappend = not bool(self.VISITING)
+        self.game.RESULTS.append(toappend)
+
+        if not toappend:
+            self.chanmsg(msgs["HARLOTFAILKILL"])
 
     def _cmd(self, target):
         self.VISITING = self.game.PlayerList[target]
         self.VISITING.usermsg(msgs["HARLOTVISITMSG"].format(self.name))
+        self.OBSERVE = False
 
         return msgs["HARLOTVISITMSG"].format(self.VISITING.name)
           

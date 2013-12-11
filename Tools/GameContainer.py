@@ -1,3 +1,4 @@
+import Werewolf.Game
 from Werewolf.Game import Game
 from Werewolf.Lobby import Lobby
 
@@ -69,6 +70,8 @@ class GameContainer:
         plylist = self.container[chan].players
 
         del self.container[chan]
+        self.serv.privmsg(chan, Werewolf.Game.msgs["GAMESTARTMSG"].format(", ".join(plylist)))
+        self.serv.mode(chan, "+m")
         self.container[chan] = Game(plylist,
                                     self.serv,
                                     self.createlobby,
@@ -77,4 +80,4 @@ class GameContainer:
 
 
         
-        self.serv.mode(chan, "+m")
+        

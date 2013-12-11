@@ -43,7 +43,6 @@ class Vote:
 
                 if self.ismajority(len(self.votes[ply])):
                     self.game.RunEvent(self.event)
-                    self.victim = target
                     break
 
     def get_victim(self):

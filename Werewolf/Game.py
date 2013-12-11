@@ -1,8 +1,9 @@
 import Player as Player
 from Vote import Vote
 from BaseClass import BaseChanClass
-import random, math, time, traceback
+import random, math, time, traceback, datetime
 import copy, json
+from Tools import config
 
 spectext = "Out of these players, there are {0}"
 
@@ -11,9 +12,6 @@ msgs = json.loads(open("Config/msgs.txt").read())
 YAMLDATA = NotImplemented # :^)
 
 class WerewolfException(Exception): pass
-
-class GameCreateError(Exception):
-    pass
 
         
     
@@ -103,10 +101,11 @@ class Game(BaseChanClass):
         self.role_list = []
         self.PlayerList = Player.PlayerList()
 
-        to_night = lambda: self.do_phase_change("on_night", "NIGHTMSG", PHASE_NIGHT, self.get_votingwolfcount, EVENT_WOLFKILL)
+        to_night = lambda: self.do_phase_change("on_night",  PHASE_NIGHT, self.get_votingwolfcount, EVENT_WOLFKILL)
+        to_day = lambda: self.do_phase_change("on_day", PHASE_DAY, self.get_nonwoundedcount, EVENT_LYNCHKILL)
         
-        self.events[EVENT_LYNCHKILL].append(lambda: self.kill_victim(to_night))
-        self.events[EVENT_WOLFKILL].append(lambda: self.kill_victim(lambda: self.do_phase_change("on_day", "DAYMSG", PHASE_DAY, self.get_nonwoundedcount, EVENT_LYNCHKILL)))
+        self.events[EVENT_LYNCHKILL].append(lambda: self.kill_victim(to_night, "NIGHTMSG"))
+        self.events[EVENT_WOLFKILL].append(lambda: self.kill_victim(to_day, "DAYMSG"))
         
         
 
@@ -404,10 +403,9 @@ class Game(BaseChanClass):
         return True
 
 
-    def do_phase_change(self, event_name, phasemsgid, phaseid, votetestfunc, event):
+    def do_phase_change(self, event_name, phaseid, votetestfunc, event):
         # Either night to day or day to night
         self.mass_call(event_name)
-        self.serv.privmsg(self.channame, msgs[phasemsgid])
         self.PHASE = phaseid
         self.PHASESTART = time.time()
         self.PHASEWARN = 0 
@@ -415,14 +413,21 @@ class Game(BaseChanClass):
         self.vote = None
         self.vote = Vote(self, votetestfunc, event)
 
+        if self.PHASE == PHASE_DAY:
+            self.serv.privmsg(self.channame, msgs["WHOMTOLYNCH"]).format(
+                config.COMMANDCHAR, round(self.getnonwoundedcount()/2.0))
+
 
     msgtable = {PHASE_NIGHT: ("NOKILL", "WOLFKILL"),
                 PHASE_DAY: ("NOLYNCH", "LYNCHKILL")}
 
-    def kill_victim(self, phasechangefunc):
+    def kill_victim(self, phasechangefunc, msg):
         victim = self.vote.get_victim()
+        victim.chanmsg(msgs[msg].format(
+            str(datetime.timedelta(seconds=round(time.time()-self.PHASESTART)))[2:]))
+            
         if not victim:
-            self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE]][0])
+            self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE][0]])
 
         else:
             # TODO: send da message
