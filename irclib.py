@@ -1091,6 +1091,8 @@ class SimpleIRCClient:
         self.ircobj.add_global_handler("all_events", self._dispatcher, -10)
         self.ircobj.add_global_handler("dcc_disconnect", self._dcc_disconnect, -10)
 
+        print("INIT: asdf")
+
     def _dispatcher(self, c, e):
         """[Internal]"""
         m = "on_" + e.eventtype()

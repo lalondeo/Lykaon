@@ -143,8 +143,7 @@ class Player:
     BULLET_AMOUNT_CEIL = 0.12
     GUNNER_KILLS_WOLF_AT_NIGHT_CHANCE = 1.0/4
     WOLF_GUNNER_CHANCE = 1-GUNNER_KILLS_WOLF_AT_NIGHT_CHANCE
-    SPECNAME = ""
-    GETSPECMSG = lambda *args: None
+    SPECMSGDICT = {}
 
     # For reaper.
     # these values (except for GAVEWARNING, which is bool) are timestamps.
@@ -210,10 +209,11 @@ class Player:
         if self.game.first_night and self.ROLEMSG:
             self.usermsg(self.ROLEMSG)
 
-        specmsg = self.GETSPECMSG(self)
-        
-        if specmsg:
-            self.usermsg(specmsg)
+        for spec in self.SPECMSGDICT.keys():
+            if not getattr(self, spec, None):
+                continue; # For example, if gunner has no more bullets,
+                          # He isn't gunner anymore
+            
 
         if self.DISPLAYPLAYERS:
             self.usermsg(self.game.playerlist())
@@ -228,11 +228,7 @@ class Player:
     GUN_MISS_CHANCES = 1.0/7
     GUN_SUICIDE_CHANCES = 2.0/7
     HEADSHOT_CHANCES = 2.0/5
-
-
     SEEN = ""
-
-    
     # Might sound retarded, but harlot/werecrow/GA needs to keep a reference to Player.
     # Harlot needs to find out if the visited user is dead.
     DEAD = False 
@@ -313,6 +309,7 @@ class Player:
             self.game.serv.privmsg(self.game.channame, msgs["LYNCHWOUNDED"].format(self.name))
             return
 
+        self.chanmsg(msgs["LYNCHMSG"].format(self.name, target))
         self.game.vote.vote(self.name, target)
 
 
@@ -335,9 +332,6 @@ class Player:
         "You are not a wolf ..."
         raise Game.WerewolfException("You are not a wolf.") # Moo
         
-
-    def on_wolfdeath(self):
-        return True # In case the victim is harlot, he might not be dead after wolf kill
 
     def shoot(self, target, *args):
         "PEW! PEW! PEW! PEW! Used to shoot an user.  "
@@ -610,6 +604,7 @@ class Seer(OneUseCommandPlayer):
         self.build()
 
     name_singular = "seer"
+    ROLEMSG = msgs["SEERROLEMSG"]
     name_plural = "seers"
     OBSERVE = False
     

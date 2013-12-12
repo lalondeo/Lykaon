@@ -13,6 +13,7 @@ userdict = json.loads(open("Config/UserDict.txt").read())
 class GameContainer:
     # Contains all the games objects (Lobby/Game)
     stasisdicts = {}
+    quiets = {}
 
     def __init__(self, channels, serv):
         self.channels, self.serv = channels, serv
@@ -42,6 +43,18 @@ class GameContainer:
 
     def createlobby(self, chan):
         self.create_config(chan)
+        if chan in self.quiets.keys():
+            tounquietlist = []
+            # Mass unquiets
+            for user in self.quiets[chan]:
+                tounquietlist.append(user)
+
+                if len(tounquietlist) == 5:
+                    self.serv.mode(chan, "-qqqqq "+" ".join(tounquietlist))
+                    tounquietlist = []
+
+            # Unquiet what's left
+            self.serv.mode(chan, "-q"*len(tounquietlist)+' '+' '.join(tounquietlist))
             
         self.container[chan] = Lobby(self.channels,
                                      self.serv,
@@ -51,6 +64,13 @@ class GameContainer:
                                      self.container)
 
     def kill(self, chan, target):
+        for user in self.channels[chan].voiced():
+            if user.startswith(target):
+                break
+
+        user = user.split('!')[1].split('@')[1]
+            
+        self.quiets[chan].append(user)
         self.serv.mode(chan, "-v+q "+target+' '+target)
 
     def create_config(self, chan):
@@ -66,9 +86,8 @@ class GameContainer:
         self.serv.mode(chan, "-m")
 
     def start_game(self, chan):
-        
+        self.quiets[chan] = []
         plylist = self.container[chan].players
-
         del self.container[chan]
         self.serv.privmsg(chan, Werewolf.Game.msgs["GAMESTARTMSG"].format(", ".join(plylist)))
         self.serv.mode(chan, "+m")

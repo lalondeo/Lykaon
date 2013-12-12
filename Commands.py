@@ -3,6 +3,8 @@ from threading import Thread
 import traceback, sys
 from Werewolf.Game import WerewolfException # :oo
 
+owners = ["unaffiliated/incredible"]
+
 class FakeServ:
     "When testing offline. "
     def print_data(self, *args):
@@ -70,25 +72,23 @@ class CommandClass:
         def _OutputMethod(self, target, text, *args):
             if not text:
                 return
-
-            
-
             self.OutputMethod(target, text, *args)
                 
 
         def OutputMethod(self, target, text, *args):
-            
             self.serv.privmsg(target, args[0].split('!')[0]+': '+str(text))
     
         def get_func(self, channel, author, *args):
 
+                cmdname = args[0].lower()
+                authorhostmask = author.split('!')[1].split('@')[1]
                 try:
-                        target = getattr(self.namespace, args[0].lower())
+                        target = getattr(self.namespace, cmdname)
                         
                 except AttributeError, SyntaxError:
                         a = search_object(
                             self.find_callable_attrs(),
-                            args[0].lower(), verbose=False)
+                            cmdname, verbose=False)
 
                         if not a: 
                             return "Attribute not found. "
@@ -98,11 +98,18 @@ class CommandClass:
                 except WerewolfException as exception:
                     return str(exception)
 
-                   
-                if type(target) == type(self.get_func) or type(target) == type(lambda: 0):
+                if ((cmdname in namespace.admincmds and not authorhostmask in namespace.adminlist and not authorhostmask in owners) or
+                    cmdname in namespace.ownercmds and not authorhostmask in owners):
+                    raise WerewolfException("You need a higher security level to use these commands.")
                     
-                         target(*args[1:])
-
+                    
+                                   
+                if type(target) == type(self.get_func) or type(target) == type(lambda: 0):
+                    if not target.__doc__:
+                        raise WerewolfException("You are disallowed to call this command. ")
+                    
+                    target(*args[1:])
+                         
                 else:
                           return "OOPS"
                                                          

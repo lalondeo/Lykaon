@@ -1,7 +1,7 @@
 #!usr/bin/env/python
 
 import irclib, ircbot, TimeManager
-irclib.DEBUG = 2
+irclib.DEBUG = True
 from Werewolf import Game
 from Werewolf import BaseClass
 from threading import Thread
@@ -14,11 +14,6 @@ if sys.version_info[0] == 3:
     import imp
     reload = imp.reload # I know, it's retarded, live with it.
 
-
-for obj in globals().keys():
-    if type(globals()[obj]) == type(sys) and globals()[obj] != sys:
-        print obj
-        reload(globals()[obj])
 
 # Dirty stuff, currently only supported by freenode.
 csaccesslistsyntax = "\d (\S*) \+(\w*) \[.*]"
@@ -38,10 +33,11 @@ class Lykaon(ircbot.SingleServerIRCBot):
         if not "freenode" in config.SERVER:
             self.accesslisttracker = None
             sys.stdout.write("Warning: The chosen server isn't freenode. Thus, the bot won't be able to use /cs access chan LIST to list bot admins. ")
-            
+
+        print "LE: moo"
         try:
-          a = Thread(target = self.start)
-          a.start()
+          self.start()
+          
         except KeyboardInterrupt:
           self.connection.quit("Ctrl-C at console")
           
@@ -59,12 +55,13 @@ class Lykaon(ircbot.SingleServerIRCBot):
 
     def on_welcome(self, serv, event):
         # Useful
+        print "MOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
         self.serv = serv
-
-        serv.alleventshandler = self.alleventshandler # I added that
+        serv.privmsg("nickserv", "identify incredible disboss")
+        self.alleventshandler = self.alleventshandler
         self.CommandClass = Commands.CommandClass(self.channels, serv)
         self.GameContainer = GameContainer.GameContainer(self.channels, serv)
-        serv.TimeManager = TimeManager.TimeManager(serv, self.GameContainer) # ASDF
+        serv.TimeManager = TimeManager.TimeManager(serv, self.GameContainer)
         for chan in config.CHANS:
             serv.join(chan)
 
@@ -95,16 +92,16 @@ class Lykaon(ircbot.SingleServerIRCBot):
     def on_privmsg(self, serv, event):
         self.on_pubmsg(serv, event) # A bit hacky, but meh.
 
-    def on_privnotice(self, serv, event):
-        if event.source().split('!')[0] == "ChanServ":
-            msg = event.arguments()[0]
-            if re.match(csaccesslistsyntax, msg):
-
-                self.accesslisttracker["flaglist"].append(re.findall(csaccesslistsyntax, msg)[0])
-
-            elif re.match(csaccesslistendsyntax, msg):
-                self.accesslisttracker["function"](self.accesslisttracker)
-
+##    def on_privnotice(self, serv, event):
+##        if event.source().split('!')[0] == "ChanServ":
+##            msg = event.arguments()[0]
+##            if re.match(csaccesslistsyntax, msg):
+##
+##                self.accesslisttracker["flaglist"].append(re.findall(csaccesslistsyntax, msg)[0])
+##
+##            elif re.match(csaccesslistendsyntax, msg):
+##                self.accesslisttracker["function"](self.accesslisttracker)
+##
     def call_handler(self, instance, event):
         # Used in alleventshandler
         for obj in dir(instance):
@@ -115,8 +112,8 @@ class Lykaon(ircbot.SingleServerIRCBot):
                 try:
                     getattr(instance, obj)(event)
 
-                except GameContainer.Game.WerewolfException:
-                    print "HAHAHAHAHAHHAHAHAHJAAHAHahaHHIOfrhrg9ergoaerwrv"
+                except:
+                    self.exception_handler(self.serv, event, sys.exc_info()[1])
                     
 
     def alleventshandler(self, event):
@@ -214,7 +211,7 @@ class Lykaon(ircbot.SingleServerIRCBot):
             klass.PlayerList[lastnick].name = newnick
         
 
-#Lykaon = Lykaon()
+Lykaon = Lykaon()
 
 
 
@@ -247,31 +244,31 @@ def test():
     
 
 
-test()
+#test()
 
 
-while 1:
-    try:
-        data = raw_input("Enter da tingz: ").split(' ')
-        source = data[0]
-        target = data[1]
-        arg = " ".join(data[2:])
-
-        if target[0] != "#":
-            target = sample%target
-        
-        Lykaon.on_pubmsg(Lykaon.serv, irclib.Event(None,
-                                             sample%source,
-                                             target,
-                                             [arg]))
-
-    except KeyboardInterrupt:
-        while 1:
-            try:
-                exec raw_input('>> ')
-
-            except:
-                traceback.print_exc()
-
-    except:
-        traceback.print_exc()
+##    while 1:
+##        try:
+##            data = raw_input("Enter da tingz: ").split(' ')
+##            source = data[0]
+##            target = data[1]
+##            arg = " ".join(data[2:])
+##
+##            if target[0] != "#":
+##                target = sample%target
+##            
+##            Lykaon.on_pubmsg(Lykaon.serv, irclib.Event(None,
+##                                                 sample%source,
+##                                                 target,
+##                                                 [arg]))
+##
+##        except KeyboardInterrupt:
+##            while 1:
+##                try:
+##                    exec raw_input('>> ')
+##
+##                except:
+##                    traceback.print_exc()
+##
+##        except:
+##            traceback.print_exc()

@@ -144,7 +144,7 @@ class Lobby(BaseClass.BaseChanClass):
         if len(self.players) < 4:
             raise Game.WerewolfException("Not enough players. ")
 
-        elif not self.get_hostmask(self.authorname) in self.players:
+        elif not self.authorname.split('!')[0] in self.players:
             raise Game.WerewolfException("You have to join first ...")
 
         elif (time.time()-self.starttime) < MINJOINTIME:

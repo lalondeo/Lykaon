@@ -1,3 +1,5 @@
+#-*- coding: latin-1 -*-
+
 import Player as Player
 from Vote import Vote
 from BaseClass import BaseChanClass
@@ -82,10 +84,7 @@ class Game(BaseChanClass):
     
 
     def __init__(self, players, serv, on_end_func, kill_func, channel):
-        serv.action(channel, "sets mode +m on "+channel)
-        
         self.PHASE = PHASE_NIGHT
-        
         self.players, self.serv, self.on_end = copy.deepcopy(players), serv, on_end_func
 
         self._kill, self.chan = kill_func, channel
@@ -94,12 +93,15 @@ class Game(BaseChanClass):
             EVENT_GUNNERKILL:[],
             EVENT_LYNCHKILL:[],
             EVENT_WOLFKILL:[]}
+
+        self.admincmds.extend([self.revealroles])
         
         self.vote = None
         self.ENDED = False
         self.first_night = True
         self.role_list = []
         self.PlayerList = Player.PlayerList()
+        
 
         to_night = lambda: self.do_phase_change("on_night",  PHASE_NIGHT, self.get_votingwolfcount, EVENT_WOLFKILL)
         to_day = lambda: self.do_phase_change("on_day", PHASE_DAY, self.get_nonwoundedcount, EVENT_LYNCHKILL)
@@ -128,14 +130,30 @@ class Game(BaseChanClass):
     
         self.distribute_roles(players)
         to_night()
-        
+
+    def votes(self, *args):
+        "Get votes. "
+        if self.PHASE == PHASE_NIGHT:
+            raise WerewolfException("AHAHAHAHA no.") # ._________.
+            
+        format = "{0}: {1} {2}"
+        result = []
+        for vote in self.vote.votes.keys():
+            result.append(format.format(vote.name(),
+                                        len(self.vote.votes[name])),
+                          ", ".join([x.name for x in self.vote.votes[vote]]))
+
+        return ", ".join(result)
 
     def on_tick(self):
         # Called every 1 second.
-        self.reaper()
+        self.playerreaper()
+        self.phasereaper()
+        
         if self.vote:
             # Not much useful, since every special command uses it, but it will avoid bugs in case of a faulty modded function.
             self.vote.update()
+            
         
 
     def distribute_roles(self, players):
@@ -195,7 +213,27 @@ class Game(BaseChanClass):
 
         return result
 
-    def reaper(self):
+    def phasereaper(self):
+        timesincestart = time.time()-self.PHASESTART
+        if self.PHASE == PHASE_NIGHT:
+            if timesincestart > NIGHT_TIME_LIMIT:
+                self.RunEvent(EVENT_WOLFKILL)
+
+        else:
+            # obviously day
+            if timesincestart > len(self.PlayerList.playerlist)*DAY_TIME_WARNING and not self.PHASEWARN:
+                # TODO: warn
+                self.PHASEWARN = time.time()
+
+            elif time.time()-self.PHASEWARN > DAY_LIMIT_CHANGE:
+                self.FORCE = True
+                self.RunEvent(EVENT_LYNCHKILL)
+
+            
+                
+            
+        
+    def playerreaper(self):
         # Will reap the idlers from the game. 8)
 
         tests = {
@@ -265,6 +303,155 @@ class Game(BaseChanClass):
 
             num+=1
         return num
+
+    def lynch(self, target, *args):
+        "Lynch lynch lynch lynch :O"
+        return self.PlayerList[self.authorname.split('!')[0]].lynch(target)
+
+    def shoot(self, target, *args):
+        "Let's shooooooooooot PEW PEW"
+        return self.PlayerList[self.authorname.split('!')[0]].shoot(target)
+
+
+
+    def wolf_mass_msg(self,
+                    nick = "",
+                    msg = "",
+                    function = (lambda serv: serv.privmsg),
+                    _format = "<{1}> {0}"):
+        
+        # Sent to all the wolves.
+        
+        for player in self.PlayerList.playerlist:
+            if player.name == nick or not issubclass(player.__class__, Player.Wolf):
+                continue
+
+            # Yes, function may seem retaaaaaaaaarded, but it is used for action too
+            function(self.serv)(player.name, _format.format(msg, nick)) # asdf
+    
+    def mass_call(self, methodname, *args, **kw):
+        # For phase changes and deaths.  
+        for player in self.PlayerList.playerlist:
+            for i in dir(player):
+                if i.startswith(methodname):
+                    # Call eeeeeeet
+                    getattr(player, i)(*args, **kw)
+
+
+    def phase_test(self, func):
+        # moo
+        if (time.time() - self.PHASESTART) < 10:
+            self.serv.TimeManager.addfunc(func, time.time()-self.PHASESTART)
+            return False # NEIN
+
+        return True
+
+
+    def do_phase_change(self, event_name, phaseid, votetestfunc, event):
+        # Either night to day or day to night
+        if self.isgameover():
+            return
+        
+        self.mass_call(event_name)
+        self.PHASE = phaseid
+        self.PHASESTART = time.time()
+        self.PHASEWARN = False
+        self.FORCE = False
+        
+        self.vote = None
+        self.vote = Vote(self, votetestfunc, event)
+
+        if self.PHASE == PHASE_DAY:
+            self.serv.privmsg(self.channame, msgs["WHOMTOLYNCH"].format(
+                config.COMMANDCHAR, int(round(self.get_nonwoundedcount()/2.0))))
+
+
+    msgtable = {PHASE_NIGHT: ("NOKILL", "WOLFKILL"),
+                PHASE_DAY: ("NOLYNCH", "LYNCHKILL")}
+
+
+    def kill_victim(self, phasechangefunc, msg):
+        kw = {}
+        if self.FORCE: kw["forced"] = True
+        
+        victim = self.vote.get_victim(**kw)
+        if not victim: return # Forget that
+        
+        victim.chanmsg(msgs[msg].format(
+            str(datetime.timedelta(seconds=round(time.time()-self.PHASESTART)))[2:]))
+            
+        if not victim:
+            self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE][0]])
+
+        else:
+            self.RESULTS = []
+            victim.on_death(EVENT_WOLFKILL if self.PHASE == PHASE_NIGHT else EVENT_LYNCHKILL)
+            if not False in self.RESULTS:
+                self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE][1]].format(victim.name, victim.name_singular))
+                self.kill(victim.name)
+
+
+        phasechangefunc()
+        
+        
+        
+
+    def RunEvent(self, event, *args):
+        # Ugly, but meh.
+        for func in self.events[event]:
+            func(*args)
+
+    def end(self, happyending=True):
+        # End eet
+        # happyending = villagers have won or not
+        print "moo"
+        self.ENDED = True
+        text = ""
+        if happyending:
+            text = "VILWIN"
+
+        elif happyending == False:
+            text = "WOLFWIN"
+
+        else:
+            text = "NOWIN" # Some big meanie aborted it
+
+
+
+        self.serv.privmsg(self.channame, msgs[text])
+        self.serv.privmsg(self.channame, self.revealroles(singularverb = "was", pluralverb = "were"))
+        self.on_end()
+        
+
+        
+    
+
+
+    def isgameover(self):
+        x = self.PlayerList.deepcount(Player.Wolf)
+        if x == 0:
+            self.end(happyending = True)
+
+        
+        elif x >= len(self.PlayerList.playerlist)/2.0:
+            self.end(happyending = False)
+
+        else:
+            return False
+
+        
+
+   
+    def kill(self, target):
+        del self.PlayerList[target]
+        self.players.remove(target)
+        self._kill(target)
+
+
+
+
+
+
 
     def revealroles(self, singularverb = "is", pluralverb = "are"):
         "asdfasdfasdf"
@@ -359,140 +546,6 @@ class Game(BaseChanClass):
             specs[tuple[0]] += 1
 
         return "There are "+self.generate_rolestats(roles)+". "+self.generate_specs(specs)+". "
-
-    def lynch(self, target, *args):
-        "Lynch lynch lynch lynch :O"
-        return self.PlayerList[self.authorname.split('!')[0]].lynch(target)
-
-    def shoot(self, target, *args):
-        "Let's shooooooooooot PEW PEW"
-        return self.PlayerList[self.authorname.split('!')[0]].shoot(target)
-
-
-
-    def wolf_mass_msg(self,
-                    nick = "",
-                    msg = "",
-                    function = (lambda serv: serv.privmsg),
-                    _format = "<{1}> {0}"):
-        
-        # Sent to all the wolves.
-        
-        for player in self.PlayerList.playerlist:
-            if player.name == nick or not issubclass(player.__class__, Player.Wolf):
-                continue
-
-            # Yes, function may seem retaaaaaaaaarded, but it is used for action too
-            function(self.serv)(player.name, _format.format(msg, nick)) # asdf
-    
-    def mass_call(self, methodname, *args, **kw):
-        # For phase changes and deaths.  
-        for player in self.PlayerList.playerlist:
-            for i in dir(player):
-                if i.startswith(methodname):
-                    # Call eeeeeeet
-                    getattr(player, i)(*args, **kw)
-
-
-    def phase_test(self, func):
-        # moo
-        if (time.time() - self.PHASESTART) < 10:
-            self.serv.TimeManager.addfunc(func, time.time()-self.PHASESTART)
-            return False # NEIN
-
-        return True
-
-
-    def do_phase_change(self, event_name, phaseid, votetestfunc, event):
-        # Either night to day or day to night
-        self.mass_call(event_name)
-        self.PHASE = phaseid
-        self.PHASESTART = time.time()
-        self.PHASEWARN = 0 
-        
-        self.vote = None
-        self.vote = Vote(self, votetestfunc, event)
-
-        if self.PHASE == PHASE_DAY:
-            self.serv.privmsg(self.channame, msgs["WHOMTOLYNCH"]).format(
-                config.COMMANDCHAR, round(self.getnonwoundedcount()/2.0))
-
-
-    msgtable = {PHASE_NIGHT: ("NOKILL", "WOLFKILL"),
-                PHASE_DAY: ("NOLYNCH", "LYNCHKILL")}
-
-    def kill_victim(self, phasechangefunc, msg):
-        victim = self.vote.get_victim()
-        victim.chanmsg(msgs[msg].format(
-            str(datetime.timedelta(seconds=round(time.time()-self.PHASESTART)))[2:]))
-            
-        if not victim:
-            self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE][0]])
-
-        else:
-            # TODO: send da message
-            self.RESULTS = []
-            victim.on_death(EVENT_WOLFKILL if self.PHASE == PHASE_NIGHT else EVENT_LYNCHKILL)
-            if not False in self.RESULTS:
-                self.serv.privmsg(self.channame, msgs[self.msgtable[self.PHASE][1]].format(victim.name, victim.name_singular))
-                self.kill(victim.name)
-
-
-        phasechangefunc()
-        
-        
-        
-
-    def RunEvent(self, event, *args):
-        # Ugly, but meh.
-        for func in self.events[event]:
-            func(*args)
-
-    def end(self, happyending=True):
-        # End eet
-        # happyending = villagers have won or not
-        print "moo"
-        self.ENDED = True
-        text = ""
-        if happyending:
-            text = "VILWIN"
-
-        elif happyending == False:
-            text = "WOLFWIN"
-
-        else:
-            text = "NOWIN" # Some big meanie aborted it
-
-
-
-        self.serv.privmsg(self.channame, msgs[text])
-        self.serv.privmsg(self.channame, self.revealroles(singularverb = "was", pluralverb = "were"))
-        self.on_end()
-        
-
-        
-    
-
-
-    def isgameover(self):
-        x = self.PlayerList.deepcount(Player.Wolf)
-        if x == 0:
-            self.end(happyending = True)
-
-        
-        elif x >= len(self.PlayerList.playerlist)/2.0:
-            self.end(happyending = False)
-
-        else:
-            return False
-
-        
-
-   
-    def kill(self, target):
-        del self.PlayerList[target]
-        self.players.remove(target)
-        self._kill(target)
         
 
 

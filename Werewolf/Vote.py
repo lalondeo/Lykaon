@@ -45,10 +45,13 @@ class Vote:
                     self.game.RunEvent(self.event)
                     break
 
-    def get_victim(self):
+    def get_victim(self, forced=False):
         countbank = [len(self.votes[x]) for x in self.votes.keys()]
         if countbank.count(max(countbank)) != 1:
             return # Even split :(
+
+        if self.votenum_func() > max(countbank)*2 and not forced:
+            return 
 
         for ply in self.votes.keys():
             if len(self.votes[ply]) == max(countbank):

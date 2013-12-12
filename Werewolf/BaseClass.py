@@ -11,7 +11,8 @@ class BaseChanClass:
         self.target,
         "The {0} lands on {1}".format(item, landpoint))
 
-
+    admincmds = []
+    ownercmds = []
 
     def playerlist(self):
         "Get the list of players. "
