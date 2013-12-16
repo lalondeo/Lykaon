@@ -53,9 +53,10 @@ class PlayerList:
         # Allows this:
         # foo = PlayerList()
         # PlayerList.addplayer(Wolf("foobar", game))
-        # print PlayerList["foobar"].BULLETS
+        #
+        PlayerList["foobar"].BULLETS
         # Also supports dat:
-        # print PlayerList["FooBA"].BULLETS => foobar's bullets
+        # print(PlayerList["FooBA"].BULLETS) => foobar's bullets
    
         possiblenameslist = []
 
@@ -363,6 +364,12 @@ class Wolf(Player):
     def on_privmsg(self, event):
         self.game.wolf_mass_msg(self.name, event.arguments()[0])
 
+    def on_shoot(self, source):
+        if self.game.PlayerList.deep_istype(source, Wolf):
+            return GUN_EVENT_MISS
+
+        return GUN_EVENT_WOLFKILL
+
     def on_nightdisplaywolfroles(self):
         seq = []
         for player in self.game.PlayerList.playerlist:
@@ -394,25 +401,6 @@ class Wolf(Player):
 
         self.usermsg(msgs["WOLFKILLMSG"].format(target))
         self.game.vote.vote(self.name, target)
-        
-        
-            
-            
-    def _shoot(self, target):
-        event = self.gunner_event_chance()
-        if self.game.PlayerList.deep_istype(self.game.PlayerList[target], self.__class__):
-            event = Game.GUN_EVENT_MISS # Obviously .______.
-            self.MISSEDSHOT = True
-            
-        event = self.gunner_event_chance()
-        if self.BULLETS == 1 and not self.MISSEDSHOT:
-            event = Game.GUN_EVENT_MISS
-
-        elif event == Game.GUN_EVENT_MISS:
-            self.MISSEDSHOT = True
-            
-        
-            
         self.interpret_event(event)
 
 

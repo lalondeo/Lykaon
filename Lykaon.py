@@ -54,10 +54,8 @@ class Lykaon(ircbot.SingleServerIRCBot):
         
 
     def on_welcome(self, serv, event):
-        # Useful
-        print "MOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
         self.serv = serv
-        serv.privmsg("nickserv", "identify incredible disboss")
+        serv.privmsg("nickserv", "identify incredible moo")
         self.alleventshandler = self.alleventshandler
         self.CommandClass = Commands.CommandClass(self.channels, serv)
         self.GameContainer = GameContainer.GameContainer(self.channels, serv)
@@ -145,8 +143,6 @@ class Lykaon(ircbot.SingleServerIRCBot):
         
         except Game.WerewolfException:
             result = str(sys.exc_info()[1])
-            print "result", result
-            
 
         except:
             result = "Oops! Exception logged in console.  Please report this. "
@@ -163,7 +159,6 @@ class Lykaon(ircbot.SingleServerIRCBot):
         try:
             target = event.target()
             user = event.source().split('!')[0]
-            print user, target
             if target[0] != "#":
                 # Le query
                 chan = self.find_game(user)
@@ -179,14 +174,13 @@ class Lykaon(ircbot.SingleServerIRCBot):
 
         
             text = event.arguments()[0]
-            print "TEXT", text
             if text[0] == config.COMMANDCHAR:
                 self.CommandClass.call_func(target, event.source(), namespace, text[1:])
 
 
 
         except:
-            print sys.exc_info()
+            print(sys.exc_info())
             self.exception_handler(serv, event, sys.exc_info())
             traceback.print_exc()
 
@@ -211,7 +205,7 @@ class Lykaon(ircbot.SingleServerIRCBot):
             klass.PlayerList[lastnick].name = newnick
         
 
-Lykaon = Lykaon()
+#Lykaon = Lykaon()
 
 
 
@@ -225,50 +219,38 @@ def test():
     Lykaon.on_welcome(serv, None)
     event0 = irclib.Event("asdf", sample%"Lykaon", target="#asdf")
     Lykaon.on_join(serv, event0)
+
     
-    for name in ["foo", "bar", "asdf", "nigga", "fucker", "Ristovski", 
-                 "Yo mama", "blah", "bluerg", "mudafeka", "bob", "bill",
-                 "bernie"]:
+    
+    
+
+
+test()
+
+
+while 1:
+    try:
+        data = raw_input("Enter da tingz: ").split(' ')
+        source = data[0]
+        target = data[1]
+        arg = " ".join(data[2:])
+
+        if target[0] != "#":
+            target = sample%target
         
-        event1 = irclib.Event("asdf", sample%name,
-                          "#asdf", arguments=["!join"])
-    
+        Lykaon.on_pubmsg(Lykaon.serv, irclib.Event(None,
+                                             sample%source,
+                                             target,
+                                             [arg]))
 
-        Lykaon.on_pubmsg(serv, event1)
-        
-    Lykaon.GameContainer["#asdf"].startfunc("#asdf")
-    print Lykaon.GameContainer["#asdf"].revealroles()
+    except KeyboardInterrupt:
+        while 1:
+            try:
+                exec raw_input('>> ')
 
-    
-    
-    
+            except:
+                traceback.print_exc()
 
+    except:
+        traceback.print_exc()
 
-#test()
-
-
-##    while 1:
-##        try:
-##            data = raw_input("Enter da tingz: ").split(' ')
-##            source = data[0]
-##            target = data[1]
-##            arg = " ".join(data[2:])
-##
-##            if target[0] != "#":
-##                target = sample%target
-##            
-##            Lykaon.on_pubmsg(Lykaon.serv, irclib.Event(None,
-##                                                 sample%source,
-##                                                 target,
-##                                                 [arg]))
-##
-##        except KeyboardInterrupt:
-##            while 1:
-##                try:
-##                    exec raw_input('>> ')
-##
-##                except:
-##                    traceback.print_exc()
-##
-##        except:
-##            traceback.print_exc()

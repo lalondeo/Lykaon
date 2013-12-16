@@ -81,7 +81,7 @@ class Lobby(BaseClass.BaseChanClass):
             if (name in self.container[chan].players):
                 raise Game.WerewolfException("You can't play in two channels at a time. ")
 
-        print "OKEY"
+        
         self.players.append(name)
         self.hostmasks.append(hostmask)
         self.serv.privmsg(self.channame, msgs["JOINMSG"].format(name))
@@ -95,10 +95,6 @@ class Lobby(BaseClass.BaseChanClass):
     def leave(self, errmsg=True, msg = msgs["LOBBYLEAVEMSG"]):
         "leave teh game. "
         try:
-            if type(errmsg) != type(False):
-                return # NO .____________.
-            
-            
             hostmask = self.get_hostmask(self.author)
             name = self.get_nickname(self.author)
                                                                 
@@ -152,6 +148,17 @@ class Lobby(BaseClass.BaseChanClass):
             
         self.startfunc(self.channame)
 
+    def ping(self):
+        "Will ping everyone in the chan :D"
+        userlist = []
+        for user in self.channels[self.channame].users():
+            if self.get_hostmask(user) in self.stasisdict.keys():
+                continue
+
+            userlist.append(self.get_nickname(user))
+
+        self.serv.privmsg(self.channame, "PING! "+' '.join(userlist))
+
     def find_hostmask(self, name):
         for _list in (self.channels[self.channame].users(),
                                 self.channels[self.channame].voiced()):
@@ -160,7 +167,7 @@ class Lobby(BaseClass.BaseChanClass):
                 if user.split('!')[0] == name:
                     return user
 
-        raise WerewolfException("Name not found")
+        raise Game.WerewolfException("Name not found")
             
 
     def setstasis(self, targetname, penalty):
@@ -169,11 +176,11 @@ class Lobby(BaseClass.BaseChanClass):
             return "you must provide a valid integer. "
             
         hostmask = self.get_hostmask(self.find_hostmask(targetname))
-        if not hostmask in StasisDict.keys():
-            self.StasisDict[hostmask] = int(penalty)
+        if not hostmask in stasisdict.keys():
+            self.stasisdict[hostmask] = int(penalty)
 
         else:
-            self.StasisDict[hostmask] += int(penalty)
+            self.stasisdict[hostmask] += int(penalty)
 
         if hostmask in self.players:
             self.leave(self.find_hostmask(targetname)) # Rude :>

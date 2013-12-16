@@ -81,6 +81,7 @@ class CommandClass:
         def get_func(self, channel, author, *args):
 
                 cmdname = args[0].lower()
+                namespace = self.namespace
                 authorhostmask = author.split('!')[1].split('@')[1]
                 try:
                         target = getattr(self.namespace, cmdname)
@@ -98,7 +99,10 @@ class CommandClass:
                 except WerewolfException as exception:
                     return str(exception)
 
-                if ((cmdname in namespace.admincmds and not authorhostmask in namespace.adminlist and not authorhostmask in owners) or
+                if not hasattr(namespace, "admincmds"):
+                    pass
+                
+                elif ((cmdname in namespace.admincmds and not authorhostmask in namespace.adminlist and not authorhostmask in owners) or
                     cmdname in namespace.ownercmds and not authorhostmask in owners):
                     raise WerewolfException("You need a higher security level to use these commands.")
                     

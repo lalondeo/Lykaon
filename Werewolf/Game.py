@@ -157,7 +157,6 @@ class Game(BaseChanClass):
         
 
     def distribute_roles(self, players):
-        print "*** DISTRIBUTION ***"
         
         result = []
         length = len(players)
@@ -166,13 +165,9 @@ class Game(BaseChanClass):
         for role in self.role_list:
             
             for x in range(self.getcount(role.distribution, length)):
-                
-                print role, x
-
                 # Choose player, delete if from players and give him a role
                 player = random.choice(players)
                 players.remove(player)
-                print player+' '+role.name_singular
                 result.append(role(player, self))
 
         for player in players:
@@ -201,15 +196,10 @@ class Game(BaseChanClass):
                         # Skip too if player has already the spec
                         continue
                     
-                    print spec, player.name
                     self.current_specs.append((spec_table[spec], player)) # asdf
                     setattr(player, spec, specs[spec][1](self, player))
                     used.append(player)
                     break
-                    
-
-                    
-        print "*** DISTRIBUTION ***"
 
         return result
 
@@ -248,7 +238,6 @@ class Game(BaseChanClass):
             # Execute all the tests.
             for test in tests.keys():
                 if test(timestamp, player):
-                    print tests[test][0]
                     self.serv.privmsg(self.chan, (tests[test][0]).format(player.name, player.name_singular))
 
                     if len(tests[test]) == 3:
@@ -404,7 +393,6 @@ class Game(BaseChanClass):
     def end(self, happyending=True):
         # End eet
         # happyending = villagers have won or not
-        print "moo"
         self.ENDED = True
         text = ""
         if happyending:
@@ -456,8 +444,6 @@ class Game(BaseChanClass):
     def revealroles(self, singularverb = "is", pluralverb = "are"):
         "asdfasdfasdf"
 
-        print traceback.extract_stack()
-
         roles = {}
         for char in self.PlayerList.playerlist:
             nametuple = (char.name_singular, char.name_plural)
@@ -471,8 +457,7 @@ class Game(BaseChanClass):
             if not spec[0] in roles.keys():
                 roles[spec[0]] = []
             roles[spec[0]].append(spec[1].name)
-
-        print roles
+            
         result = []
         for names in roles.keys():
             verb = pluralverb
